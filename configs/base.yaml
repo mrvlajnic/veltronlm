@@ -1,0 +1,36 @@
+# Shared defaults. Every other config inherits from this via `base:`.
+
+run_name: veltronlm
+output_dir: checkpoints
+
+# Model architecture. Keys map to ModelConfig entries in veltron/model/config.py.
+# Run `python -m veltron.cli config` for the full registry with parameter counts.
+model:
+  nano:  { n_layers: 4,  d_model: 256,  n_heads: 4,  n_kv_heads: 2, d_ff: 688,   max_seq_len: 512 }
+  micro: { n_layers: 8,  d_model: 512,  n_heads: 8,  n_kv_heads: 2, d_ff: 1376,  max_seq_len: 1024 }
+  mini:  { n_layers: 16, d_model: 1024, n_heads: 16, n_kv_heads: 4, d_ff: 2752,  max_seq_len: 2048 }
+  small: { n_layers: 24, d_model: 1536, n_heads: 12, n_kv_heads: 4, d_ff: 4096,  max_seq_len: 4096 }
+
+# Dataset
+dataset:
+  root: datasets/dataset-v1
+  version: dataset-v1
+  tokenizer: models/tok-mini-32k
+
+# Compute
+compute:
+  device: auto          # auto | cuda | directml | cpu
+  precision: auto       # DirectML has no autocast kernel for aten::embedding
+  seed: 1234
+
+train:
+  lr: 3.0e-4
+  warmup_steps: 200
+  schedule: cosine
+  min_lr_ratio: 0.1
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  eps: 1.0e-8
+  grad_clip: 1.0
+  loss_chunk_tokens: 4096

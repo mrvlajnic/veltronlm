@@ -1,0 +1,53 @@
+# REFERENCE ONLY -- NOT RUNNABLE ON THIS HOST.
+#
+# From-scratch 4B pretraining requires ~60.00 GiB of AdamW optimizer state
+# (4.03e9 params x 16 bytes for fp32 params + grads + m + v). The RX 6700 XT has 12 GiB.
+# The shortfall is 5.0x and no single-GPU strategy closes it: gradient accumulation
+# addresses activation memory, not optimizer state.
+#
+# This file documents what the run SHOULD look like on adequate hardware so the
+# configuration is not lost. See experiments/EXP-0004.md.
+#
+# Requirements:
+#   - 8x A100 80GB or H100 80GB (>=640 GB aggregate), FSDP/ZeRO-3
+#   - or 1x A100 80GB with CPU-offloaded optimizer states (2-4x slower)
+#   - ROCm or CUDA; DirectML has no distributed support
+#
+#   accelerate launch --num_processes 8 -m veltron.train --config configs/pretrain_4b_reference.yaml
+
+model_config: 4b
+dataset_root: datasets/dataset-v1
+dataset_version: dataset-v1
+tokenizer_dir: models/tok-4b-64k       # 57,611 trained tokens, 65,536 padded
+output_dir: checkpoints
+run_name: veltronlm-4b-base
+
+seq_len: 8192
+micro_batch_size: 1
+grad_accum_steps: 64                    # 524,288 tokens per optimiser step
+
+max_steps: 180000                       # ~94B tokens, Chinchilla-optimal for 4B
+max_hours: 0                            # no wall-clock budget
+
+lr: 1.5e-4
+warmup_steps: 2000
+schedule: cosine
+min_lr_ratio: 0.1
+weight_decay: 0.1
+beta1: 0.9
+beta2: 0.95
+grad_clip: 1.0
+loss_chunk_tokens: 8192                 # bound fp32 log-softmax: 8192 x 65536 x 4B
+
+precision: bf16
+device: cuda
+
+eval_interval: 2000
+eval_batches: 40
+log_interval: 50
+save_interval: 2000
+keep_last: 4
+keep_best: 3
+resume: auto
+run_canary_first: true
+seed: 1234

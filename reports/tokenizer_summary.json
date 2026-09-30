@@ -1,0 +1,75 @@
+{
+  "sample": {
+    "strata": {
+      "gutenberg_en": {
+        "available_documents": 1102,
+        "sampled_documents": 12,
+        "sampled_chars": 5998305,
+        "budget": 6000000
+      },
+      "wikipedia_en": {
+        "available_documents": 19,
+        "sampled_documents": 19,
+        "sampled_chars": 139599,
+        "budget": 1200000
+      },
+      "wikipedia_sr_cyrl": {
+        "available_documents": 20,
+        "sampled_documents": 20,
+        "sampled_chars": 135479,
+        "budget": 800000
+      },
+      "wikipedia_sr_latin": {
+        "available_documents": 1,
+        "sampled_documents": 1,
+        "sampled_chars": 8748,
+        "budget": 800000
+      },
+      "wikipedia_categories": {
+        "available_documents": 54,
+        "sampled_documents": 54,
+        "sampled_chars": 578964,
+        "budget": 1200000
+      },
+      "code": {
+        "available_documents": 161,
+        "sampled_documents": 83,
+        "sampled_chars": 2499820,
+        "budget": 2500000
+      },
+      "support": {
+        "available_documents": 15,
+        "sampled_documents": 15,
+        "sampled_chars": 19190,
+        "budget": 400000
+      }
+    },
+    "total_chars": 9380105
+  },
+  "tokenizers": {
+    "tok-mini-32k": {
+      "vocab_size": 32768,
+      "seconds": 2.6,
+      "chars_per_token": {
+        "en_prose": 3.646,
+        "sr_cyrillic": 2.819,
+        "sr_latin": 2.177,
+        "python": 3.91,
+        "technical_markdown": 3.696,
+        "json_structured": 3.416
+      }
+    },
+    "tok-4b-64k": {
+      "vocab_size": 57611,
+      "seconds": 2.9,
+      "chars_per_token": {
+        "en_prose": 3.788,
+        "sr_cyrillic": 3.484,
+        "sr_latin": 2.346,
+        "python": 4.032,
+        "technical_markdown": 3.826,
+        "json_structured": 3.597
+      }
+    }
+  }
+}

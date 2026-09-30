@@ -1,0 +1,147 @@
+{
+  "results": [
+    {
+      "source": "wikimedia-api-en",
+      "url": "https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exintro=1&titles=Rome",
+      "status": 200,
+      "bytes": 4056,
+      "seconds": 0.31,
+      "note": "",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "source": "wikimedia-api-sr",
+      "url": "https://sr.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&explaintext=1&exintro=1&titles=Rim",
+      "status": 200,
+      "bytes": 81,
+      "seconds": 0.31,
+      "note": "",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "source": "wikimedia-rest-sr",
+      "url": "https://sr.wikipedia.org/api/rest_v1/page/summary/Belgrade",
+      "status": 200,
+      "bytes": 1957,
+      "seconds": 0.25,
+      "note": "",
+      "content_type": "application/json; charset=utf-8; profile=\"https://www.mediawiki.org/wiki/Specs/Summary/1.5.0\""
+    },
+    {
+      "source": "wikisource-gutenberg",
+      "url": "https://en.wikisource.org/w/api.php?action=query&format=json&list=categorymembers&cmtitle=Category:Aesop%27s_Fables&cmlimit=5",
+      "status": 200,
+      "bytes": 51,
+      "seconds": 0.34,
+      "note": "",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "source": "gutenberg-txt",
+      "url": "https://www.gutenberg.org/files/11/11-0.txt",
+      "status": 206,
+      "bytes": 65536,
+      "seconds": 0.75,
+      "note": "",
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "source": "gutenberg-catalog",
+      "url": "https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv",
+      "status": 206,
+      "bytes": 65536,
+      "seconds": 0.74,
+      "note": "",
+      "content_type": "text/csv"
+    },
+    {
+      "source": "github-raw-mit",
+      "url": "https://raw.githubusercontent.com/pallets/flask/main/LICENSE.txt",
+      "status": 206,
+      "bytes": 1475,
+      "seconds": 0.34,
+      "note": "",
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "source": "github-raw-py",
+      "url": "https://raw.githubusercontent.com/python/cpython/main/Lib/os.py",
+      "status": 206,
+      "bytes": 43268,
+      "seconds": 0.41,
+      "note": "",
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "source": "github-raw-rust",
+      "url": "https://raw.githubusercontent.com/rust-lang/rust/master/README.md",
+      "status": 206,
+      "bytes": 3304,
+      "seconds": 0.29,
+      "note": "",
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "source": "hf-datasets-api",
+      "url": "https://huggingface.co/api/datasets?limit=3",
+      "status": 200,
+      "bytes": 3682,
+      "seconds": 0.23,
+      "note": "",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "source": "hf-resolve-wikitext",
+      "url": "https://huggingface.co/datasets/Salesforce/wikitext/resolve/main/wikitext-2-raw-v1/train-00000-of-00001.parquet",
+      "status": 206,
+      "bytes": 65536,
+      "seconds": 0.86,
+      "note": "",
+      "content_type": "application/octet-stream"
+    },
+    {
+      "source": "pypi",
+      "url": "https://pypi.org/pypi/numpy/json",
+      "status": 206,
+      "bytes": 65536,
+      "seconds": 0.21,
+      "note": "",
+      "content_type": "application/json"
+    },
+    {
+      "source": "raw-githubusercontent-root",
+      "url": "https://raw.githubusercontent.com/",
+      "status": 206,
+      "bytes": 65536,
+      "seconds": 0.36,
+      "note": "",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "source": "unicode-data",
+      "url": "https://www.unicode.org/Public/UCD/latest/ucd/Names.txt",
+      "status": 404,
+      "bytes": 0,
+      "seconds": 0.4,
+      "note": "HTTPError Not Found"
+    }
+  ],
+  "reachable": [
+    "wikimedia-api-en",
+    "wikimedia-api-sr",
+    "wikimedia-rest-sr",
+    "wikisource-gutenberg",
+    "gutenberg-txt",
+    "gutenberg-catalog",
+    "github-raw-mit",
+    "github-raw-py",
+    "github-raw-rust",
+    "hf-datasets-api",
+    "hf-resolve-wikitext",
+    "pypi",
+    "raw-githubusercontent-root"
+  ],
+  "unreachable": [
+    "unicode-data"
+  ]
+}

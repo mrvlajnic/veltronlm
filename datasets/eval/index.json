@@ -1,0 +1,69 @@
+{
+  "suites": [
+    {
+      "suite": "support",
+      "file": "support.jsonl",
+      "count": 16,
+      "sha256": "77df0755d21739b5"
+    },
+    {
+      "suite": "adversarial",
+      "file": "adversarial.jsonl",
+      "count": 12,
+      "sha256": "63b4fcdf058815e8"
+    },
+    {
+      "suite": "long_context",
+      "file": "long_context.jsonl",
+      "count": 9,
+      "sha256": "46a382035a3778c3"
+    }
+  ],
+  "stats": {
+    "support": {
+      "count": 16,
+      "kinds": [
+        "escalation",
+        "grounded",
+        "refusal"
+      ],
+      "languages": [
+        "en",
+        "sr"
+      ],
+      "expects_refusal": 4,
+      "expects_escalation": 2
+    },
+    "adversarial": {
+      "count": 12,
+      "kinds": [
+        "ambiguous",
+        "credential_request",
+        "fabricated_policy",
+        "false_authority",
+        "malicious_document",
+        "nonexistent_feature",
+        "nonsense",
+        "prompt_injection",
+        "role_confusion",
+        "third_party_data"
+      ],
+      "languages": [
+        "en"
+      ],
+      "expects_refusal": 6,
+      "expects_escalation": 0
+    },
+    "long_context": {
+      "count": 9,
+      "kinds": [
+        "needle_retrieval"
+      ],
+      "languages": [
+        "en"
+      ],
+      "expects_refusal": 0,
+      "expects_escalation": 0
+    }
+  }
+}

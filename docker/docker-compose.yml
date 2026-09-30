@@ -1,0 +1,49 @@
+# VeltronLM local stack: API + chat UI.
+#
+#   docker compose up --build
+#   docker compose run --rm api python -m veltron.evaluate --retrieval
+#
+# Published on 127.0.0.1 only. VeltronLM ships no authentication, so binding to 0.0.0.0
+# would expose an inference endpoint to the network.
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_DIRECTML: ${INSTALL_DIRECTML:-0}
+        INSTALL_PDF: ${INSTALL_PDF:-1}
+    image: veltronlm:local
+    container_name: veltronlm-api
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      VELTRON_CHECKPOINT: ${VELTRON_CHECKPOINT:-}
+      VELTRON_RAG_INDEX: /app/models/rag_index
+      VELTRON_DEVICE: ${VELTRON_DEVICE:-auto}
+      VELTRON_DTYPE: ${VELTRON_DTYPE:-auto}
+      VELTRON_LOG_LEVEL: ${VELTRON_LOG_LEVEL:-INFO}
+      VELTRON_RATE_LIMIT: ${VELTRON_RATE_LIMIT:-60}
+      VELTRON_CORS_ORIGINS: ${VELTRON_CORS_ORIGINS:-*}
+    volumes:
+      # Model artefacts are mounted read-only: the container must never mutate weights.
+      - ../models:/app/models:ro
+      - ../knowledge_base:/app/knowledge_base:ro
+      - ../checkpoints:/app/checkpoints:ro
+      - veltron-reports:/app/reports
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    # The 4B model needs more than the default 4 GB of container memory in fp32.
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+
+volumes:
+  veltron-reports:

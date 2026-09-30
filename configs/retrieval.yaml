@@ -1,0 +1,22 @@
+# Retrieval index settings. See docs/rag.md for the reasoning behind each value.
+#
+#   python -m veltron.cli index
+
+chunk_chars: 1100          # section-sized; a support answer usually lives under one heading
+overlap_chars: 150         # a procedure straddling a boundary must be retrievable from either side
+
+top_k: 6                    # context passages fed to the model
+candidates: 40              # fused pool before reranking
+per_doc_cap: 2              # cap chunks per document so one FAQ cannot fill the window
+max_context_chars: 4200
+
+# Absolute retrieval confidence below which the system refuses instead of guessing.
+# Fitted to the bundled 15-document knowledge base; re-tune per corpus.
+min_retrieval_score: 0.18
+
+max_answer_tokens: 320
+temperature: 0.3            # low: faithfulness to the retrieved context
+top_p: 0.9
+rerank: true
+rewrite_query: true
+citation_format: numbered

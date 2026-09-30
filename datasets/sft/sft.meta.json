@@ -1,0 +1,19 @@
+{
+  "count": 604,
+  "by_category": {
+    "general_classification": 107,
+    "general_explanation": 129,
+    "grounded_support_qa": 84,
+    "general_extraction": 128,
+    "general_summary": 135,
+    "escalation": 7,
+    "refusal": 14
+  },
+  "by_language": {
+    "en": 594,
+    "sr": 10
+  },
+  "grounded": 583,
+  "refusals": 21,
+  "sha256": "1078cea444012992"
+}

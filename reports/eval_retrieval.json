@@ -1,0 +1,283 @@
+{
+  "checkpoint": "",
+  "suites_requested": [
+    "support"
+  ],
+  "started_at": "2026-09-30T21:11:22Z",
+  "retrieval": {
+    "questions": 14,
+    "hit@1": 1.0,
+    "recall@5": 1.0,
+    "per_question": [
+      {
+        "question": "How long is the warranty?",
+        "expected": [
+          "policy-warranty"
+        ],
+        "retrieved": [
+          "policy-warranty",
+          "policy-warranty"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.846465,
+          0.817392
+        ]
+      },
+      {
+        "question": "My hub shows as offline",
+        "expected": [
+          "trouble-hub-offline"
+        ],
+        "retrieved": [
+          "trouble-hub-offline",
+          "trouble-hub-offline",
+          "trouble-app-pairing",
+          "product-veltron-hub",
+          "product-veltron-hub"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.733973,
+          0.714512,
+          0.38666,
+          0.320109,
+          0.286489
+        ]
+      },
+      {
+        "question": "veltron x1 status light blinking amber pairing mode",
+        "expected": [
+          "product-veltron-hub",
+          "trouble-hub-offline"
+        ],
+        "retrieved": [
+          "product-veltron-hub",
+          "trouble-hub-offline",
+          "trouble-app-pairing",
+          "policy-warranty",
+          "policy-security"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.831356,
+          0.364598,
+          0.357252,
+          0.266209,
+          0.262115
+        ]
+      },
+      {
+        "question": "What is the turnaround time for an RMA?",
+        "expected": [
+          "policy-warranty"
+        ],
+        "retrieved": [
+          "policy-warranty",
+          "policy-warranty"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.7,
+          0.467444
+        ]
+      },
+      {
+        "question": "Koliko traje garancija?",
+        "expected": [
+          "policy-warranty"
+        ],
+        "retrieved": [
+          "policy-warranty",
+          "policy-warranty"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.940205,
+          0.825498
+        ]
+      },
+      {
+        "question": "Can I get a refund after 45 days?",
+        "expected": [
+          "policy-refund"
+        ],
+        "retrieved": [
+          "policy-refund",
+          "trouble-subscription",
+          "policy-refund"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.799099,
+          0.7,
+          0.642068
+        ]
+      },
+      {
+        "question": "Where is my parcel? tracking says nothing",
+        "expected": [
+          "policy-shipping"
+        ],
+        "retrieved": [
+          "policy-shipping",
+          "policy-shipping",
+          "policy-warranty"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.791522,
+          0.567243,
+          0.349954
+        ]
+      },
+      {
+        "question": "I forgot my password",
+        "expected": [
+          "policy-security"
+        ],
+        "retrieved": [
+          "policy-security",
+          "policy-security",
+          "faq-general"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.826905,
+          0.767257,
+          0.270942
+        ]
+      },
+      {
+        "question": "What are the dimensions of the VeltronSense?",
+        "expected": [
+          "product-veltron-sense"
+        ],
+        "retrieved": [
+          "product-veltron-sense",
+          "trouble-sensor-dropout",
+          "product-veltron-sense",
+          "product-veltron-hub"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.93193,
+          0.717771,
+          0.7,
+          0.284124
+        ]
+      },
+      {
+        "question": "How much is the Plus plan?",
+        "expected": [
+          "product-veltron-cloud"
+        ],
+        "retrieved": [
+          "product-veltron-cloud",
+          "policy-privacy-data",
+          "product-veltron-cloud",
+          "trouble-subscription",
+          "policy-refund"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.680921,
+          0.586329,
+          0.479814,
+          0.40478,
+          0.298155
+        ]
+      },
+      {
+        "question": "Someone logged into my account and I did not",
+        "expected": [
+          "policy-security"
+        ],
+        "retrieved": [
+          "policy-security",
+          "policy-security",
+          "policy-privacy-data"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.684513,
+          0.400991,
+          0.328168
+        ]
+      },
+      {
+        "question": "Can I close my account and delete my data?",
+        "expected": [
+          "faq-general",
+          "faq-privacy-serbian",
+          "policy-privacy-data"
+        ],
+        "retrieved": [
+          "policy-privacy-data",
+          "policy-privacy-data",
+          "policy-security"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.722549,
+          0.638156,
+          0.359167
+        ]
+      },
+      {
+        "question": "I want to send the device back for repair",
+        "expected": [
+          "policy-refund",
+          "policy-warranty"
+        ],
+        "retrieved": [
+          "policy-warranty",
+          "policy-warranty",
+          "trouble-account-transfer"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.840869,
+          0.78374,
+          0.560971
+        ]
+      },
+      {
+        "question": "Does the app need Bluetooth permission to pair?",
+        "expected": [
+          "trouble-app-pairing"
+        ],
+        "retrieved": [
+          "trouble-app-pairing",
+          "policy-privacy-data",
+          "policy-warranty",
+          "trouble-subscription",
+          "product-veltron-hub"
+        ],
+        "hit@1": true,
+        "recall@5": true,
+        "scores": [
+          0.944941,
+          0.268012,
+          0.25634,
+          0.239486,
+          0.215922
+        ]
+      }
+    ]
+  },
+  "finished_at": "2026-09-30T21:11:22Z"
+}

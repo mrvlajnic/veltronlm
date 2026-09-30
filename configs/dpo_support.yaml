@@ -1,0 +1,30 @@
+# Direct preference optimisation against named support failure modes.
+#
+#   python -m veltron.finetuning.cli dpo --init checkpoints/sft-support
+
+run_name: dpo-support
+init_checkpoint: checkpoints/sft-support
+model_config: micro
+tokenizer_dir: models/tok-mini-32k
+output_dir: checkpoints
+data_path: datasets/alignment/preferences.jsonl
+
+max_seq_len: 640
+micro_batch_size: 1
+grad_accum_steps: 8
+max_steps: 200
+
+# 100x lower than SFT. DPO diverges readily at higher rates.
+lr: 5.0e-7
+warmup_ratio: 0.1
+schedule: cosine
+grad_clip: 1.0
+beta: 0.1
+label_smoothing: 0.0
+
+eval_fraction: 0.12
+log_interval: 10
+save_interval: 100
+seed: 1234
+device: auto
+precision: fp32

@@ -1,0 +1,53 @@
+{
+  "device": {
+    "kind": "directml",
+    "torch_device_type": "privateuseone",
+    "name": "DirectML device",
+    "total_memory_gb": 8.0,
+    "supports_bf16": false,
+    "supports_fp16": true,
+    "supports_fp8": false
+  },
+  "results": {
+    "micro": {
+      "tier": "micro",
+      "status": "UNTRAINED \u2014 random weights, serving footprint only",
+      "parameters": 55715328,
+      "weight_bytes": 111430656,
+      "weight_gib": 0.104,
+      "load_seconds": 0.99,
+      "quantization": null,
+      "allocated_bytes": 0,
+      "generation": [
+        {
+          "prompt_chars": 17,
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "seconds": 1.7609,
+          "tokens_per_second": 13.63,
+          "time_to_first_token_s": 0.0414,
+          "finish_reason": "length"
+        },
+        {
+          "prompt_chars": 16,
+          "prompt_tokens": 4,
+          "completion_tokens": 24,
+          "seconds": 1.8236,
+          "tokens_per_second": 13.16,
+          "time_to_first_token_s": 0.0399,
+          "finish_reason": "length"
+        },
+        {
+          "prompt_chars": 33,
+          "prompt_tokens": 11,
+          "completion_tokens": 24,
+          "seconds": 1.7463,
+          "tokens_per_second": 13.74,
+          "time_to_first_token_s": 0.0379,
+          "finish_reason": "length"
+        }
+      ],
+      "median_tokens_per_second": 13.63
+    }
+  }
+}

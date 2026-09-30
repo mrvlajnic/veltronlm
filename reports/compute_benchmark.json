@@ -1,0 +1,107 @@
+{
+  "backends": [
+    {
+      "kind": "directml",
+      "torch_device_type": "privateuseone",
+      "name": "DirectML device",
+      "total_memory_gb": 8.0,
+      "supports_bf16": false,
+      "supports_fp16": true,
+      "supports_fp8": false
+    },
+    {
+      "kind": "cpu",
+      "torch_device_type": "cpu",
+      "name": "CPU (4 threads)",
+      "total_memory_gb": 31.96,
+      "supports_bf16": false,
+      "supports_fp16": false,
+      "supports_fp8": false
+    }
+  ],
+  "matmul": [
+    {
+      "device": "directml",
+      "n": 512,
+      "dtype": "float32",
+      "seconds": 0.0712,
+      "tflops": 0.0754
+    },
+    {
+      "device": "directml",
+      "n": 1024,
+      "dtype": "float32",
+      "seconds": 0.0834,
+      "tflops": 0.3861
+    },
+    {
+      "device": "directml",
+      "n": 2048,
+      "dtype": "float32",
+      "seconds": 0.1551,
+      "tflops": 0.8862
+    },
+    {
+      "device": "directml",
+      "n": 512,
+      "dtype": "float16",
+      "seconds": 0.0495,
+      "tflops": 0.1085
+    },
+    {
+      "device": "directml",
+      "n": 1024,
+      "dtype": "float16",
+      "seconds": 0.1079,
+      "tflops": 0.2986
+    },
+    {
+      "device": "directml",
+      "n": 2048,
+      "dtype": "float16",
+      "seconds": 0.0916,
+      "tflops": 1.5008
+    },
+    {
+      "device": "cpu",
+      "n": 1024,
+      "dtype": "float32",
+      "seconds": 0.1061,
+      "tflops": 0.2024
+    },
+    {
+      "device": "cpu",
+      "n": 2048,
+      "dtype": "float32",
+      "seconds": 0.4005,
+      "tflops": 0.2145
+    }
+  ],
+  "train_step": [
+    {
+      "model": "veltronlm-nano",
+      "parameters": 19679488,
+      "seq_len": 512,
+      "batch": 4,
+      "steps": 5,
+      "seconds": 6.5,
+      "tokens": 10240,
+      "tokens_per_second": 1575.5,
+      "seconds_per_step": 1.3
+    },
+    {
+      "model": "veltronlm-micro",
+      "parameters": 55715328,
+      "seq_len": 1024,
+      "batch": 2,
+      "steps": 5,
+      "seconds": 63.91,
+      "tokens": 10240,
+      "tokens_per_second": 160.2,
+      "seconds_per_step": 12.783
+    }
+  ],
+  "accelerator_peak_tflops": 1.5008,
+  "cpu_peak_tflops": 0.2145,
+  "speedup_vs_cpu": 7.0
+}

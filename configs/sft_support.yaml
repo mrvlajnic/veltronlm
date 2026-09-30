@@ -1,0 +1,31 @@
+# Instruction tuning for the customer-support assistant.
+#
+#   python -m veltron.finetuning.cli train --base checkpoints/micro-pretrain
+
+run_name: sft-support
+base_checkpoint: checkpoints/micro-pretrain
+model_config: micro
+tokenizer_dir: models/tok-mini-32k
+output_dir: checkpoints
+data_path: datasets/sft/sft.jsonl
+
+max_seq_len: 640
+micro_batch_size: 2
+grad_accum_steps: 4
+epochs: 3.0
+
+# 60x lower than pretraining. Fine-tuning at the pretraining LR destroys the model.
+lr: 1.0e-5
+min_lr_ratio: 0.1
+warmup_ratio: 0.05
+schedule: cosine
+weight_decay: 0.0        # already regularised by pretraining
+grad_clip: 1.0
+
+eval_fraction: 0.08
+log_interval: 20
+save_interval: 100
+loss_chunk_tokens: 4096
+seed: 1234
+device: auto
+precision: fp32

@@ -1,0 +1,177 @@
+{
+  "name": "tok-4b-64k",
+  "vocab_size": 57611,
+  "vocab_requested": 65536,
+  "training_seconds": 2.9,
+  "training_stats": {
+    "files": [
+      {
+        "path": "datasets\\tokenizer_train_sample.jsonl",
+        "lines": 177,
+        "chars": 8030537
+      }
+    ],
+    "total_chars": 8030537,
+    "total_lines": 177,
+    "vocab_size": 57611,
+    "vocab_size_requested": 65536,
+    "special_tokens": {
+      "<|pad|>": 0,
+      "<|bos|>": 1,
+      "<|eos|>": 2,
+      "<|sep|>": 3,
+      "<|unk|>": 4,
+      "<|system|>": 5,
+      "<|user|>": 6,
+      "<|assistant|>": 7,
+      "<|support|>": 8,
+      "<|cite|>": 9,
+      "<|escalate|>": 10,
+      "<|unknown|>": 11,
+      "<|retrieve|>": 12,
+      "<|doc|>": 13,
+      "<|end|>": 14,
+      "<|think|>": 15,
+      "<|answer|>": 16,
+      "<|code|>": 17,
+      "<|json|>": 18,
+      "<|table|>": 19,
+      "<|sr|>": 20,
+      "<|en|>": 21
+    },
+    "note": "byte-level BPE is total: <|unk|> is unreachable by construction"
+  },
+  "efficiency": {
+    "en_prose": {
+      "samples": 120,
+      "chars": 960000,
+      "tokens": 253449,
+      "words": 156541,
+      "chars_per_token": 3.788,
+      "tokens_per_word": 1.619,
+      "bits_per_char": 2.112,
+      "roundtrip_failures": 0
+    },
+    "sr_cyrillic": {
+      "samples": 20,
+      "chars": 62935,
+      "tokens": 18062,
+      "words": 9465,
+      "chars_per_token": 3.484,
+      "tokens_per_word": 1.908,
+      "bits_per_char": 2.296,
+      "roundtrip_failures": 0
+    },
+    "sr_latin": {
+      "samples": 2,
+      "chars": 9437,
+      "tokens": 4023,
+      "words": 1395,
+      "chars_per_token": 2.346,
+      "tokens_per_word": 2.884,
+      "bits_per_char": 3.41,
+      "roundtrip_failures": 0
+    },
+    "python": {
+      "samples": 76,
+      "chars": 562641,
+      "tokens": 139535,
+      "words": 63324,
+      "chars_per_token": 4.032,
+      "tokens_per_word": 2.204,
+      "bits_per_char": 1.984,
+      "roundtrip_failures": 0
+    },
+    "technical_markdown": {
+      "samples": 39,
+      "chars": 271958,
+      "tokens": 71077,
+      "words": 31291,
+      "chars_per_token": 3.826,
+      "tokens_per_word": 2.271,
+      "bits_per_char": 2.091,
+      "roundtrip_failures": 0
+    },
+    "json_structured": {
+      "samples": 1,
+      "chars": 8000,
+      "tokens": 2224,
+      "words": 853,
+      "chars_per_token": 3.597,
+      "tokens_per_word": 2.607,
+      "bits_per_char": 2.224,
+      "roundtrip_failures": 0
+    }
+  },
+  "sample_report": {
+    "strata": {
+      "gutenberg_en": {
+        "available_documents": 1102,
+        "sampled_documents": 12,
+        "sampled_chars": 5998305,
+        "budget": 6000000
+      },
+      "wikipedia_en": {
+        "available_documents": 19,
+        "sampled_documents": 19,
+        "sampled_chars": 139599,
+        "budget": 1200000
+      },
+      "wikipedia_sr_cyrl": {
+        "available_documents": 20,
+        "sampled_documents": 20,
+        "sampled_chars": 135479,
+        "budget": 800000
+      },
+      "wikipedia_sr_latin": {
+        "available_documents": 1,
+        "sampled_documents": 1,
+        "sampled_chars": 8748,
+        "budget": 800000
+      },
+      "wikipedia_categories": {
+        "available_documents": 54,
+        "sampled_documents": 54,
+        "sampled_chars": 578964,
+        "budget": 1200000
+      },
+      "code": {
+        "available_documents": 161,
+        "sampled_documents": 83,
+        "sampled_chars": 2499820,
+        "budget": 2500000
+      },
+      "support": {
+        "available_documents": 15,
+        "sampled_documents": 15,
+        "sampled_chars": 19190,
+        "budget": 400000
+      }
+    },
+    "total_chars": 9380105
+  },
+  "special_token_ids": {
+    "<|pad|>": 0,
+    "<|bos|>": 1,
+    "<|eos|>": 2,
+    "<|sep|>": 3,
+    "<|unk|>": 4,
+    "<|system|>": 5,
+    "<|user|>": 6,
+    "<|assistant|>": 7,
+    "<|support|>": 8,
+    "<|cite|>": 9,
+    "<|escalate|>": 10,
+    "<|unknown|>": 11,
+    "<|retrieve|>": 12,
+    "<|doc|>": 13,
+    "<|end|>": 14,
+    "<|think|>": 15,
+    "<|answer|>": 16,
+    "<|code|>": 17,
+    "<|json|>": 18,
+    "<|table|>": 19,
+    "<|sr|>": 20,
+    "<|en|>": 21
+  }
+}

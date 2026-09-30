@@ -1,0 +1,10 @@
+{
+  "vocab_size": 32768,
+  "min_frequency": 2,
+  "byte_fallback": true,
+  "use_regex_pretokenizer": true,
+  "lowercase": false,
+  "initial_alphabet": 256,
+  "train_limit": 8000000,
+  "name": "tok-mini-32k"
+}

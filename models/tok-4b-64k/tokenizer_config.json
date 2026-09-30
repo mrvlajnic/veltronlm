@@ -1,0 +1,10 @@
+{
+  "vocab_size": 65536,
+  "min_frequency": 2,
+  "byte_fallback": true,
+  "use_regex_pretokenizer": true,
+  "lowercase": false,
+  "initial_alphabet": 256,
+  "train_limit": 8000000,
+  "name": "tok-4b-64k"
+}

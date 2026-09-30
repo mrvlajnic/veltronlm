@@ -1,0 +1,29 @@
+# 244M parameters. Multi-hour per epoch on this host; use for scaling-law points
+# rather than for iteration.
+#
+#   python -m veltron.train --config configs/pretrain_mini.yaml --max-hours 8
+
+base: base.yaml
+
+train:
+  run_name: mini-pretrain
+  model_config: mini
+  dataset_root: datasets/dataset-v1
+  dataset_version: dataset-v1
+  tokenizer_dir: models/tok-mini-32k
+  output_dir: checkpoints
+
+  seq_len: 2048
+  micro_batch_size: 1          # 32k vocabulary at 2048 context is memory-bound
+  grad_accum_steps: 16
+  max_steps: 20000
+  max_hours: 8.0
+
+  lr: 6.0e-4
+  warmup_steps: 400
+  schedule: cosine
+  eval_interval: 500
+  log_interval: 25
+  save_interval: 500
+  keep_last: 3
+  resume: auto

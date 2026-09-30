@@ -1,0 +1,38 @@
+{
+  "files": [
+    {
+      "path": "datasets\\tokenizer_train_sample.jsonl",
+      "lines": 177,
+      "chars": 8030537
+    }
+  ],
+  "total_chars": 8030537,
+  "total_lines": 177,
+  "vocab_size": 32768,
+  "vocab_size_requested": 32768,
+  "special_tokens": {
+    "<|pad|>": 0,
+    "<|bos|>": 1,
+    "<|eos|>": 2,
+    "<|sep|>": 3,
+    "<|unk|>": 4,
+    "<|system|>": 5,
+    "<|user|>": 6,
+    "<|assistant|>": 7,
+    "<|support|>": 8,
+    "<|cite|>": 9,
+    "<|escalate|>": 10,
+    "<|unknown|>": 11,
+    "<|retrieve|>": 12,
+    "<|doc|>": 13,
+    "<|end|>": 14,
+    "<|think|>": 15,
+    "<|answer|>": 16,
+    "<|code|>": 17,
+    "<|json|>": 18,
+    "<|table|>": 19,
+    "<|sr|>": 20,
+    "<|en|>": 21
+  },
+  "note": "byte-level BPE is total: <|unk|> is unreachable by construction"
+}

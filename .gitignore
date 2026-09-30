@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets -- never commit these
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# Large artefacts: reproducible from scripts, too big for git.
+# NOTE: dataset-v1 contains ~19,000 shard files. `git add -A` scans all of them even
+# when ignored unless the directory itself is excluded, so exclude the shard
+# directories wholesale rather than by file pattern.
+datasets/raw/
+datasets/*/train/
+datasets/*/val/
+datasets/*/test/
+datasets/*/documents-*.jsonl
+datasets/tokenizer_train_sample.jsonl
+datasets/tokenizer_train_sample.report.json
+datasets/*/manifest.json
+datasets/*/provenance.json
+models/*/tokenizer.json
+models/rag_index/
+models/rag_index_int/
+checkpoints/
+!checkpoints/.gitkeep
+reports/*.out
+reports/*.err
+*.log
+*.safetensors
+*.bin
+*.pt
+*.npz
+!veltron/**/*.py
+
+# Reports are kept (they are the evidence); logs are not
+logs/
+!experiments/*.md
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# duplicate venv (torch 2.4.1 + directml)
+.venv-gpu/
+

@@ -1,0 +1,26 @@
+# Fast smoke configuration: completes in minutes, used to validate a pipeline change.
+#
+#   python -m veltron.train --config configs/pretrain_nano.yaml
+
+base: base.yaml
+
+train:
+  run_name: nano-smoke
+  model_config: nano
+  dataset_root: datasets/dataset-v1
+  dataset_version: dataset-v1
+  tokenizer_dir: models/tok-mini-32k
+  output_dir: checkpoints
+
+  seq_len: 512
+  micro_batch_size: 4
+  grad_accum_steps: 2
+  max_steps: 100
+  lr: 1.0e-3
+  warmup_steps: 20
+  eval_interval: 50
+  eval_batches: 4
+  log_interval: 10
+  save_interval: 50
+  keep_last: 2
+  resume: none

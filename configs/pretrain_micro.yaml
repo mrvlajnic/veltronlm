@@ -1,0 +1,42 @@
+# The live pretraining run. This is the exact configuration executed.
+#
+#   python -m veltron.train --config configs/pretrain_micro.yaml
+
+base: base.yaml
+
+train:
+  run_name: micro-pretrain
+  model_config: micro
+  dataset_root: datasets/dataset-v1
+  dataset_version: dataset-v1
+  tokenizer_dir: models/tok-mini-32k
+  output_dir: checkpoints
+
+  # Micro-batch 4 OOMs on 12 GiB: the logit tensor alone is ~0.54 GiB before autograd
+  # buffers, and micro-batch 8 needs 1.07 GiB plus a 3.22 GiB transient allocation.
+  seq_len: 1024
+  micro_batch_size: 2
+  grad_accum_steps: 8          # 16,384 tokens per optimiser step
+
+  max_steps: 4000
+  max_hours: 5.0              # hard wall-clock budget; stops cleanly at a step boundary
+
+  lr: 6.0e-4
+  warmup_steps: 120
+  schedule: cosine
+  min_lr_ratio: 0.1
+  weight_decay: 0.1
+  grad_clip: 1.0
+
+  eval_interval: 250
+  eval_batches: 20
+  log_interval: 25
+  save_interval: 250
+  keep_last: 4
+  keep_best: 2
+
+  device: auto
+  precision: auto
+  seed: 1234
+  resume: none
+  run_canary_first: true
