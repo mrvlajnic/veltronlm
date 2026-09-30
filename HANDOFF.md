@@ -25,6 +25,7 @@ except the single thing the hardware cannot do: **train the 4B model from scratc
 | | |
 |---|---|
 | Repo root | `E:\Posao\testmaxspace` |
+| Git | **committed `3ef258e` on `main`, NOT pushed** — no remote, no `gh`, no token (§13) |
 | Python | 3.10.11 at `C:\Users\Gamer\AppData\Local\Programs\Python\Python310\python.exe` |
 | **Required env var** | `$env:PYTHONPATH = "E:\Posao\testmaxspace"` (package is not pip-installed) |
 | Tests | `python -m pytest tests -q` → **181 passed** |
@@ -364,17 +365,50 @@ Full detail in `docs/roadmap.md`.
 
 ---
 
-## 13. Known infrastructure gaps
+## 13. Git state — READ THIS FIRST
 
-| Gap | Action needed |
+**Work is committed. It is NOT pushed. There is no remote.**
+
+```
+commit  3ef258e   feat: VeltronLM 0.1.0-alpha ...
+branch  main
+files   154 tracked
+```
+
+The repo was created in this session (it did not exist before). `.gitignore` excludes
+`datasets/raw/` (510 MB), all ~19,000 dataset shard files, `checkpoints/` (all weights),
+`models/*/tokenizer.json` and the duplicate `.venv-gpu/`.
+
+### To publish
+
+There is **no `gh` CLI and no `GITHUB_TOKEN`/`GH_TOKEN` in the environment**, and no remote
+is configured, so the push was not possible from this session. To finish it:
+
+```powershell
+# 1. Create the empty repo on github.com (or wherever), then:
+git remote add origin https://github.com/<you>/veltronlm.git
+git push -u origin main
+
+# or with a token, non-interactively:
+git remote add origin https://github.com/<you>/veltronlm.git
+git -c http.extraHeader="AUTHORIZATION: basic $env:PAT" push -u origin main
+```
+
+Alternatively install `gh` (`winget install GitHub.cli`), run `gh auth login`, then
+`gh repo create veltronlm --public --source . --push`.
+
+Nothing else is required — the working tree is clean and ready.
+
+### Also outstanding
+
+| Gap | Action |
 |---|---|
-| **Not a git repository.** No version control, so no history, no rollback. | `git init && git add -A && git commit`. **Do this first.** Checkpoints that began before the commit record `git_commit: "unavailable"`. |
-| `.gitignore` written but never exercised by git | Verify it excludes `datasets/raw/`, `*.safetensors`, `checkpoints/*/step-*/` before the first commit. |
-| 17 ruff warnings remain | All cosmetic except `F821 Undefined name 'asdict'` and `'k'` in `veltron/evaluation/metrics.py`, and `F601 "rs" repeated` in `veltron/data/acquire.py:273`. **Fix those three first.** |
-| `mypy` not a CI gate | Run `mypy veltron --ignore-missing-imports` and triage. |
-| CI written, never executed | The workflow references `httpx`, which must be in the install list for `TestClient`. Verify. |
-| Dockerfile/compose written, never built | `docker compose -f docker/docker-compose.yml build`. |
-| README results table is from step 750 | Update after the run completes. |
+| 10 ruff warnings remain | All cosmetic (`F841` unused locals, `B007` unused loop vars). The three real ones — `F821 undefined 'asdict'`, `F821 undefined 'k'`, `F601 duplicate "rs" key` — **are fixed**. |
+| `mypy` not a CI gate | `mypy veltron --ignore-missing-imports` and triage. |
+| CI never executed | `.github/workflows/ci.yml` references `httpx`, needed for `TestClient`. Verify the install list. |
+| Docker never built | `docker compose -f docker/docker-compose.yml build`. |
+| `git prune` warning | "too many unreachable loose objects" from the interrupted `git add`. `git gc --prune=now` when convenient. |
+| README results table | From step 750. Update after the run completes. |
 
 ---
 
