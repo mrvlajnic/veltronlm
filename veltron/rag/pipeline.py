@@ -66,6 +66,19 @@ Pravila koja moraš poštovati:
 CONTEXT:
 {context}"""
 
+SMALL_TALK_EN = (
+    "Hello. I'm Veltron Support, an assistant for Veltron Industries. I can answer "
+    "questions about the VeltronHub X1, VeltronSense, Veltron Cloud, warranty, "
+    "shipping, refunds and account security — and I'll tell you plainly when something "
+    "isn't in the documentation and a human agent is needed."
+)
+SMALL_TALK_SR = (
+    "Zdravo. Ja sam Veltron Support, asistent za kompaniju Veltron Industries. Mogu da "
+    "odgovorim na pitanja o VeltronHub X1, VeltronSense, Veltron Cloud, garanciji, "
+    "dostavi, povraćaju i bezbednosti naloga — i jasno ću reći kada odgovor nije u "
+    "dokumentaciji i potrebno je uključiti ljudskog agenta."
+)
+
 REFUSAL_EN = (
     "I can't find that in the Veltron support documentation available to me, so I won't "
     "invent an answer. I'd rather escalate this to a human agent who can check the account "
@@ -259,6 +272,24 @@ class RAGPipeline:
         entities = extract_entities(question)
         signals = detect_safety_signals(question)
         lang = language or entities.language
+
+        # Small talk short-circuits before retrieval: there is no support content to
+        # ground an answer in, and searching the policy corpus for "how are you" returns
+        # loosely-related passages that the model would then try to answer.
+        if classification.category == "small_talk":
+            return RAGAnswer(
+                question=question,
+                answer=SMALL_TALK_SR if lang == "sr" else SMALL_TALK_EN,
+                refused=False, escalated=False,
+                citations=[],
+                retrieved=[],
+                classification=classification.as_dict(),
+                entities=entities.as_dict(),
+                safety=signals.as_dict(),
+                escalation={"escalate": False, "reason": None},
+                latency_seconds=round(time.perf_counter() - t0, 4),
+            )
+
         rewritten = rewrite_query(question, lang) if self.cfg.rewrite_query else question
 
         retrieval_query = self._augment_query(rewritten, classification)

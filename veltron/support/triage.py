@@ -77,8 +77,28 @@ CATEGORIES: tuple[Category, ...] = (
     Category("how_to", "How-to guidance", "How to configure, use, or set something up", 4,
              tags=("how do i", "how to", "how can i", "can you explain", "steps to",
                    "where do i", "help me set", "configure", "setup", "set up", "tutorial")),
+    Category("policy_question", "Policy question", "What does a warranty, refund, "
+             "privacy or shipping rule require?", 3,
+             tags=("how long is", "how many days", "how much is", "what is the warranty",
+                   "what is the policy", "do i get", "can i return", "is there a",
+                   "what are the terms", "how do i return", "how does the refund",
+                   "what happens if", "am i eligible", "what does the", "policy on",
+                   "is there a fee", "how do i cancel", "what are my rights",
+                   "how long does", "what's the policy", "terms for")),
+    # Greetings and pleasantries are answered from a template, never from the knowledge
+    # base: a "how are you" has no support answer, and letting it through produced
+    # retrieved-but-irrelevant context that the model then tried to answer.
+    Category("small_talk", "Greeting or pleasantry", "Social opener with no support content", 6,
+             tags=("hi", "hello", "hey", "good morning", "good afternoon",
+                   "good evening", "how are you", "how's it going", "hows it going",
+                   "thanks", "thank you", "cheers", "bye", "goodbye", "good night",
+                   "who are you", "what can you do", "nice to meet you")),
     Category("other", "Unclassified", "No confident match", 5,
-             tags=("hi", "hello", "hey", "thanks", "thank you", "cheers", "")),
+             # NOTE: no empty tag. In Python `str.count("")` returns `len(s) + 1`, so an
+             # empty keyword matches every possible position in the message and hands
+             # `other` an unbeatable score. That silently misrouted "How long is the
+             # warranty?" to `other` with 0.95 confidence.
+             tags=("hi", "hello", "hey", "thanks", "thank you", "cheers", "goodbye")),
 )
 
 #: The fallback bucket must never be reported as a confident classification: a bare
@@ -118,6 +138,26 @@ SECRET_REQUEST_MARKERS = (
 HARASSMENT_MARKERS = (
     "idiot", "moron", "stupid", "scam", "fraud", "thief", "garbage company", "lawsuit",
 )
+
+
+#: Tags this short are matched on word boundaries only. Without it, "hi" matches
+#: inside "shipping", "hey" inside "they" and "bye" inside "goodbye" -- caught by
+#: asking "Is there a fee for shipping?" and getting small_talk.
+WORD_BOUNDARY_MAX_LEN = 4
+
+
+def _count_term(text: str, term: str) -> int:
+    """Count occurrences of `term` in `text`, respecting word boundaries.
+
+    Short terms must match whole words. Longer phrases may match as substrings, because
+    they are specific enough that an embedded match is still meaningful -- "refund"
+    inside "refunds", or "warranty" inside "warranty period".
+    """
+    if not term:
+        return 0
+    if len(term) <= WORD_BOUNDARY_MAX_LEN:
+        return len(re.findall(rf"\b{re.escape(term)}\b", text))
+    return text.count(term)
 
 
 @dataclass
@@ -235,7 +275,7 @@ def classify_ticket(text: str, use_safety: bool = True) -> Classification:
         for tag in cat.tags:
             if not tag:
                 continue
-            occurrences = low.count(tag)
+            occurrences = _count_term(low, tag)
             if occurrences:
                 # Longer phrases are more specific and therefore more informative.
                 weight = 1.0 + 0.55 * (len(tag.split()) - 1)
@@ -259,6 +299,14 @@ def classify_ticket(text: str, use_safety: bool = True) -> Classification:
         return Classification(cat.key, cat.label, 0.9, cat.priority,
                               list(signals.matched.get("prompt_injection", [])), None, True,
                               "Prompt-injection attempt detected in the message body.")
+    # Small talk is short-circuited before any retrieval happens. Without this, a
+    # greeting retrieved loosely-related support passages and the model tried to answer
+    # them, which is worse than replying with a canned greeting.
+    if "small_talk" in scores and scores["small_talk"] >= 1.0:
+        cat = CATEGORY_BY_KEY["small_talk"]
+        return Classification(cat.key, cat.label, 0.95, cat.priority,
+                              matched["small_talk"][:6], None, False,
+                              "Greeting or pleasantry; no support content to retrieve.")
     if "escalation" in scores and scores["escalation"] >= 1.0:
         cat = CATEGORY_BY_KEY["escalation"]
         return Classification(cat.key, cat.label, 0.9, cat.priority,

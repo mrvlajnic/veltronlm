@@ -259,6 +259,8 @@ def test_classify_common_support_intents():
         ("What are the dimensions and weight?", "product_info"),
         ("Please let me speak to a human agent", "escalation"),
         ("I want to suggest a feature for dark mode", "feature_request"),
+        ("Hi, how are you?", "small_talk"),
+        ("How long is the warranty?", "policy_question"),
     ]
     for text, expected in cases:
         c = classify_ticket(text)
@@ -296,8 +298,11 @@ def test_credential_request_is_security_incident():
 
 
 def test_unclassified_text_is_low_confidence():
-    c = classify_ticket("hello")
-    assert c.confidence < 0.5
+    # A greeting is small_talk, which is short-circuited before retrieval. A message
+    # with no category signal at all must still land in other with low confidence.
+    assert classify_ticket("hello").category == "small_talk"
+    assert classify_ticket("asdkjh qwe zxc").category == "other"
+    assert classify_ticket("asdkjh qwe zxc").confidence < 0.5
 
 
 def test_describe_taxonomy_is_serialisable():
@@ -394,3 +399,49 @@ def test_pipeline_flags_synthetic_data(retriever):
     pipe = RAGPipeline(retriever=retriever, cfg=RAGConfig())
     a = pipe.answer("How long is the warranty?")
     assert a.synthetic_data_notice is True
+
+
+def test_empty_keyword_does_not_capture_every_message():
+    """Regression: an empty keyword matches every position in Python.
+
+    `"text".count("") == len("text") + 1`, so an empty tag in the other category gave
+    it an unbeatable score and misrouted real questions. This test pins the taxonomy.
+    """
+    from veltron.support.triage import CATEGORIES
+
+    for cat in CATEGORIES:
+        assert all(tag.strip() for tag in cat.tags), \
+            f"category {cat.key} has an empty keyword tag"
+    c = classify_ticket("How long is the warranty?")
+    assert c.category == "policy_question", c.category
+    assert classify_ticket("asdkjh qwe zxc").category == "other"
+
+
+def test_small_talk_short_circuits_before_retrieval(retriever):
+    """Regression: a greeting used to retrieve policy passages and get "answered".
+
+    Retrieved-but-irrelevant context handed to a model produces a confident non-answer,
+    which is worse than a canned greeting.
+    """
+    from veltron.rag.pipeline import RAGConfig, RAGPipeline
+
+    pipe = RAGPipeline(retriever=retriever, cfg=RAGConfig())
+    for greeting in ("Hi how are you", "hello", "thanks"):
+        a = pipe.answer(greeting)
+        assert a.classification["category"] == "small_talk", greeting
+        assert a.retrieved == [], greeting
+        assert not a.escalated, greeting
+        assert "Veltron Support" in a.answer, greeting
+
+
+def test_policy_question_is_its_own_category():
+    """Regression: the taxonomy had no category for policy questions, the most common
+    support query type, so "How long is the warranty?" fell through to other while
+    retrieval confidently found the right document."""
+    for q, expected in (
+        ("How long is the warranty?", "policy_question"),
+        ("Can I return the device after 45 days?", "policy_question"),
+        ("How much is the Plus plan?", "policy_question"),
+        ("Is there a fee for shipping?", "policy_question"),
+    ):
+        assert classify_ticket(q).category == expected, q
