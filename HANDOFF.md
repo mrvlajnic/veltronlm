@@ -89,7 +89,69 @@ python -m veltron.cli info                             # artefact inventory
 
 ---
 
-## 4. Live training run
+## 4a. LIVE RUN: veltronlm-mini (244,354,048 params)
+
+Started 2026-10-01 ~23:47. **Leave it running overnight.**
+
+`
+PID 17860   checkpoints/mini-pretrain   11-hour wall-clock budget
+python -m veltron.train --config configs/pretrain_mini_evening.yaml
+`
+
+| | |
+|---|---|
+| Parameters | 244,354,048 (16 layers, d_model 1024, 16/4 heads, SwiGLU 2752) |
+| seq / batch / accum | 512 / 2 / 8 = **8,192 tokens per optimiser step** |
+| Measured throughput | **~1,690 tok/s** |
+| loss_chunk_tokens | 256 |
+| Evaluations | every 250 steps |
+| Checkpoints | every 250 steps, keep_last 3, keep_best 2, resume auto |
+| Expected steps in 11h | ~5,800 of 6,000 |
+| One epoch of dataset-v1 | 3.2 h, so ~3.4 epochs expected |
+
+### Three fixes were needed to get mini past step ~2
+
+Each was found by measuring, not reasoning, and each produced a wrong diagnosis first:
+
+1. **The canary ran in-process.** DirectML's allocator grows its heap and never returns
+   it, so the canary's several GiB stayed reserved and training OOMed inside
+   cross_entropy almost immediately. Fixed by running the canary in a subprocess
+   (eltron/training/canary.py). Symptom looked like a memory-budget problem; the
+   identical config survived 40 micro-steps standalone (scripts/stress_accum.py).
+
+2. **The canary rewrite used random token ids.** Uniformly random ids over a 32k
+   vocabulary are incompressible, so ln(V) is the loss floor and memorisation is
+   impossible. It scored a 2.28x reduction and the gate correctly rejected it -- which is
+   the gate working as intended. Fixed to read real dataset windows.
+
+3. **The NaN gradient check allocated a bool copy of every gradient.**
+   	orch.isfinite(g).all() materialises a full-size temporary, ~256 MiB for this model,
+   and failed on a nearly-full heap. Replaced with 	orch.linalg.vector_norm, a fused O(1)
+   reduction that propagates NaN and Inf into the scalar result.
+
+Plus loss_chunk_tokens 4096 -> 256: at a 32k vocabulary one chunk needs ~1.5 GiB for a
+single cross_entropy call.
+
+### Canary threshold
+
+Set to 2.5x reduction, chosen from measured history rather than picked:
+
+| Reduction | Case | Verdict |
+|---|---|---|
+| 1.22x | canary v1, 256 windows x 1024 tokens | fail |
+| 1.39x | canary v2, 32 windows x 1024 tokens | fail |
+| 2.28x | canary on random token ids | fail (correctly rejected its own bad input) |
+| 3.13x | canary on real windows, subprocess | **pass** |
+| 399x | earlier in-process canary | pass |
+
+### Check on it
+
+`powershell
+Get-Content checkpoints\mini-pretrain\train_log.jsonl | Select-String '"eval"' | Select-Object -Last 5
+python scripts\verify_checkpoints.py checkpoints\mini-pretrain
+`
+
+## 4. Previous run: veltronlm-micro (complete)
 
 **Do not benchmark or start other GPU work while this is running** — see
 `experiments/EXP-0013.md`. A background crawler once cut throughput from 3,600 to 295
@@ -169,7 +231,7 @@ ceiling, not the nameplate.
 
 This corrects the earlier docs/environment.md figure of 12 GiB usable.
 
-### When the resumed run finishes
+### When the mini run finishes
 
 1. `checkpoints/micro-pretrain/summary.json` appears.
 2. **Evaluate immediately** — this is the highest-value next step:

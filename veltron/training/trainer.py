@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import math
+import subprocess
+import sys
 import time
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
@@ -327,11 +329,22 @@ class Trainer:
         return {"grad_norm": gn, "skipped": 0.0}
 
     def _unscale_and_check(self) -> tuple[bool, float]:
-        """Unscale (if a GradScaler is active) and verify gradients are finite."""
+        """Unscale (if a GradScaler is active) and verify gradients are finite.
+
+        The check reduces with ``vector_norm`` rather than materialising
+        ``torch.isfinite(grad).all()``. The obvious spelling allocates a full-size boolean
+        copy of every gradient before reducing it -- for a 244M-parameter model that is
+        several hundred megabytes of transient allocation, which fails outright on a nearly
+        full DirectML heap. A norm is a fused reduction: NaN and Inf both propagate into
+        the scalar result, so the test is exact while allocating O(1).
+        """
         if self.scaler is not None:
             self.scaler.unscale_(self.optimizer)
         for p in self.model.parameters():
-            if p.grad is not None and not torch.isfinite(p.grad).all():
+            if p.grad is None:
+                continue
+            n = torch.linalg.vector_norm(p.grad.detach())
+            if not bool(torch.isfinite(n)):
                 return False, 1.0
         return True, 1.0
 
@@ -647,85 +660,73 @@ class Trainer:
         except Exception as exc:
             log.error("emergency checkpoint failed: %s", exc)
 
-    # ----------------------------------------------------------------- canary
+# ----------------------------------------------------------------- canary
     def _canary(self) -> None:
         """Overfit a tiny slice before spending real compute.
 
         A model that cannot drive the loss on a few hundred tokens to near-zero has a
         wiring bug (wrong label shift, detached activations, corrupted shard), and every
         subsequent step would be wasted.
+
+        The canary runs in a **subprocess**. On DirectML the allocator grows its heap and
+        never returns it, so an in-process canary permanently reserves several gigabytes
+        and the real run then OOMs inside ``cross_entropy`` a few steps in. That produced
+        two consecutive false diagnoses of this project -- `mini` at b=2/seq=512/accum=32
+        looked like a memory-budget failure, but ``scripts/stress_accum.py`` showed the
+        identical configuration surviving 40 micro-steps on its own. A subprocess is the
+        only reliable way to reclaim the heap on this backend.
         """
         n = min(32, len(self.train_loader.dataset))
-        log.info("CANARY: memorising %d windows of %d tokens before main training",
-                 n, min(self.cfg.seq_len, 128))
-        # Truncate to short sequences and use a *small fixed subset*. The canary is a
-        # wiring check (label shift, detached activations, corrupted shards), so it must be
-        # a pure memorisation problem: 32 windows seen ~50 times cannot be learned unless
-        # gradients reach every parameter. Sampling widely across the corpus instead
-        # measures generalisation, which is far too noisy to act as a gate.
-        canary_len = min(self.cfg.seq_len, 128)
-        data = torch.stack([self.train_loader.dataset[i]["input_ids"][:canary_len] for i in range(n)])
-        labels = torch.stack([self.train_loader.dataset[i]["labels"][:canary_len] for i in range(n)])
-
-        canary_model = VeltronLM(self.model_cfg).to(self.device)
-        if self.fp16_weights:
-            canary_model.half()
-        opt = torch.optim.AdamW(canary_model.parameters(), lr=2e-3, weight_decay=0.0)
-        losses: list[float] = []
+        canary_len = min(self.train_loader.dataset.seq_len, 128)
         batch = 1
-        while batch < n:
-            probe_logits = batch * canary_len * self.model_cfg.vocab_size * 4
-            if probe_logits > 96 * 1024**2:
+        while batch < 8:
+            if batch * canary_len * self.model_cfg.vocab_size * 4 > 96 * 1024**2:
                 break
             batch += 1
-        steps = 200
-        t0 = time.perf_counter()
-        log.info("canary using batch=%d over %d windows of %d tokens", batch, n, canary_len)
-        for step in range(steps):
-            idx = torch.randint(0, n, (batch,))
-            out = canary_model(
-                data[idx].to(self.device),
-                labels=labels[idx].to(self.device),
-                loss_chunk_tokens=self.cfg.loss_chunk_tokens,
-            )
-            opt.zero_grad(set_to_none=True)
-            out.loss.backward()
-            clip_grad_norm(canary_model, 1.0)
-            opt.step()
-            losses.append(float(out.loss.detach()))
-            if (step + 1) % 50 == 0:
-                log.info("canary step %d/%d loss %.4f", step + 1, steps, losses[-1])
 
-        first10 = float(np.mean(losses[:10]))
-        last10 = float(np.mean(losses[-10:]))
-        best = float(np.min(losses))
-        # Halve the loss within 120 steps on <=128-token windows. That is a wiring
-        # assertion, not a capability claim: a model whose loss cannot halve in that
-        # budget has a shifted-label, detached-activation or corrupted-shard bug.
-        passed = bool(all(np.isfinite(losses)) and best < first10 * 0.25)
-        result = {
-            "canary": True,
-            "steps": steps,
-            "initial_loss": first10,
-            "final_loss": last10,
-            "reduction_factor": first10 / max(last10, 1e-9),
-            "best_loss": best,
-            "seconds": round(time.perf_counter() - t0, 1),
-            "sequence_length": canary_len,
-            "batch_size": batch,
-            "passed": bool(passed),
-        }
-        (self.out_dir / "canary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-        self._log_event({"note": "canary", **result})
-        if not passed:
+        out_path = self.out_dir / "canary.json"
+        cmd = [
+            sys.executable, "-m", "veltron.training.canary",
+            "--tier", self.cfg.model_config,
+            "--seq-len", str(self.cfg.seq_len),
+            "--batch-size", str(batch),
+            "--window-len", str(canary_len),
+            "--windows", str(n),
+            "--steps", "200",
+            "--loss-chunk", str(self.cfg.loss_chunk_tokens),
+            "--device", self.device_info.kind,
+            "--out", str(out_path),
+        ]
+        log.info("CANARY: overfitting %d windows of %d tokens (subprocess, %s)",
+                 n, canary_len, " ".join(cmd[2:]))
+        t0 = time.time()
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("canary timed out after 30 minutes; refusing to train")
+
+        if proc.returncode != 0:
+            log.error("canary subprocess failed:\n%s", (proc.stderr or "")[-800:])
             raise RuntimeError(
-                f"CANARY FAILED: loss did not collapse (start {first10:.4f}, best {best:.4f}). "
-                "The architecture or data pipeline has a bug; refusing to burn compute."
+                "CANARY FAILED (subprocess): the pipeline did not converge on a memorisation "
+                "task. Refusing to spend hours on a broken run."
             )
-        log.info("CANARY PASSED: loss %.4f -> %.4f (%.1fx reduction)",
-                 first10, best, first10 / max(best, 1e-9))
-        del canary_model, opt
-        empty_cache(self.device)
+        try:
+            result = json.loads(out_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"canary produced no readable result: {exc}")
+
+        result["seconds"] = round(time.time() - t0, 1)
+        out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        self._log_event({"note": "canary", **result})
+        if not result.get("passed"):
+            raise RuntimeError(
+                f"CANARY FAILED: loss {result.get('initial_loss'):.4f} -> "
+                f"{result.get('best_loss'):.4f}. The architecture or data pipeline has a bug."
+            )
+        log.info("CANARY PASSED: loss %.4f -> %.4f (%.1fx reduction, %.0fs, subprocess)",
+                 result["initial_loss"], result["best_loss"],
+                 result["reduction_factor"], result["seconds"])
 
 
 def _library_versions() -> dict[str, str]:

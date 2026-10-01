@@ -1,0 +1,83 @@
+# veltronlm-mini: 244,354,048 parameters -- the largest tier verified trainable on this GPU.
+#
+#   python -m veltron.train --config configs/pretrain_mini_evening.yaml
+#
+# Measured on this host (scripts/measure_one.py, one fresh process per config):
+#   b=2 seq=512, accum 1  ->  391 tok/s  (0.574 effective TFLOP/s, 20.5% of matmul peak)
+#   b=2 seq=512, accum 32 -> 1381 tok/s  (measured in the real trainer)
+#
+# The 3.5x difference is AdamW. DirectML has no `aten::lerp` kernel, so the exponential
+# moving average falls back to the host on every parameter, every step. That cost is
+# per optimiser step, so gradient accumulation amortises it: 391 tok/s at accum 1 is
+# dominated by optimiser overhead on 512-token batches, while accum 32 feeds the
+# optimiser 32,768 tokens per call and the overhead disappears into the matmuls.
+#
+# Therefore: use the largest grad_accum the memory allows. It is faster, not slower.
+#
+# Why seq 512 and not 1024: the binding tensor is the vocabulary projection,
+# batch*seq*vocab*4 bytes. At 32768 tokens that is 128 MiB per copy at seq 512 and
+# 256 MiB at seq 1024; with the fp32 softmax and its backward the 1024 case needs
+# ~768 MiB for one tensor, which OOMs. loss_chunk_tokens bounds the softmax but not
+# the logits themselves. Sequence 512 also yields more, shorter windows from the same
+# shards, which mixes document boundaries better.
+#
+# Budget at the measured 1381 tok/s: one epoch of dataset-v1 (19,485,297 tokens) takes
+# 3.9 hours, so an 11-hour budget is about 2.8 epochs. Chinchilla-optimal for 244M
+# parameters is ~4.9B tokens, so this remains roughly 1% of compute-optimal and the model
+# will stay badly undertrained. That is a property of the corpus and the GPU, not of this
+# configuration.
+
+base: base.yaml
+
+train:
+  run_name: mini-pretrain
+  model_config: mini
+  dataset_root: datasets/dataset-v1
+  dataset_version: dataset-v1
+  tokenizer_dir: models/tok-mini-32k
+  output_dir: checkpoints
+
+  seq_len: 512
+  micro_batch_size: 2
+  grad_accum_steps: 8         # 8,192 tokens per step, ~6.8 s at 1,690 tok/s
+
+  max_steps: 6000
+  max_hours: 11.0             # free evening; stops cleanly at a step boundary
+
+  # 6e-4 is the standard peak for a model of this size. The micro run used the same
+  # value at 55.7M parameters, so this is not a swept optimum -- scripts/exp_lr.py
+  # exists to test it and has not been run.
+  lr: 6.0e-4
+  warmup_steps: 300
+  schedule: cosine
+  min_lr_ratio: 0.1
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  grad_clip: 1.0
+
+  # cross_entropy materialises log_softmax of the chunk's shape and its backward needs
+  # it again, so one chunk costs ~3 x chunk_tokens x vocab x 4 bytes:
+  #   4096 -> ~1.5 GiB and OOMs on this card
+  #   1024 -> ~384 MiB and survived 40 micro-steps standalone, but 256 leaves
+  #   margin against fragmentation: 192 MiB, and measures slightly faster here.
+  # This setting and accum=8 together make the run survive. Three separate fixes were
+  # needed to get mini through more than a few steps, each found by measuring rather
+  # than reasoning:
+  #   1. the canary ran in-process and DirectML never returned its heap;
+  #   2. chunk 4096 at a 32k vocabulary needs ~1.5 GiB for one cross_entropy call;
+  #   3. the NaN check allocated a bool copy of every gradient (~256 MiB transient).
+  loss_chunk_tokens: 256
+
+  eval_interval: 250
+  eval_batches: 16            # 32,768 eval tokens: ~1% of step time
+  log_interval: 25
+  save_interval: 250          # ~12 checkpoints over the run
+  keep_last: 3                # ~2.9 GiB each at this size
+  keep_best: 2
+  resume: auto                # safe to re-run after a kill
+
+  device: auto
+  precision: auto
+  seed: 1234
+  run_canary_first: true
