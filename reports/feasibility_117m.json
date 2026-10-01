@@ -52,17 +52,15 @@
   "measured": [
     {
       "status": "OOM",
-      "batch": 1,
-      "seq": 2048,
-      "reason": "Could not allocate tensor with 805044208 bytes. There is not enough GPU video memory available!"
+      "batch": 4,
+      "seq": 1024,
+      "reason": "Could not allocate tensor with 1609301920 bytes. There is not enough GPU video memory available!"
     },
     {
-      "status": "OK",
-      "batch": 1,
-      "seq": 1024,
-      "seconds_per_step": 1.339,
-      "tokens_per_second": 764.5,
-      "effective_tflops": 0.5368
+      "status": "OOM",
+      "batch": 2,
+      "seq": 2048,
+      "reason": "Could not allocate tensor with 536870912 bytes. There is not enough GPU video memory available!"
     },
     {
       "status": "OOM",
@@ -71,40 +69,46 @@
       "reason": "Could not allocate tensor with 804650960 bytes. There is not enough GPU video memory available!"
     },
     {
+      "status": "OOM",
+      "batch": 1,
+      "seq": 2048,
+      "reason": "Could not allocate tensor with 805044208 bytes. There is not enough GPU video memory available!"
+    },
+    {
       "status": "OK",
       "batch": 2,
       "seq": 512,
-      "seconds_per_step": 1.208,
-      "tokens_per_second": 847.4,
-      "effective_tflops": 0.595
+      "seconds_per_step": 1.349,
+      "tokens_per_second": 759.0,
+      "effective_tflops": 0.533
     }
   ],
   "budget": {
     "epochs_1": {
       "params": 117027592,
       "tokens": 19485297,
-      "seconds": 22994.214066556528,
-      "hours": 6.387281685154591,
-      "effective_tflops": 0.5950150887647999,
-      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "seconds": 25672.328063241108,
+      "hours": 7.1312022397891965,
+      "effective_tflops": 0.532943653968,
+      "model_flops_utilisation_of_2_8_tflops": 0.1903370192742857,
       "tokens_per_param": 0.16650173405259847
     },
     "epochs_5": {
       "params": 117027592,
       "tokens": 97426485,
-      "seconds": 114971.07033278263,
-      "hours": 31.936408425772953,
-      "effective_tflops": 0.5950150887647999,
-      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "seconds": 128361.64031620554,
+      "hours": 35.65601119894598,
+      "effective_tflops": 0.532943653968,
+      "model_flops_utilisation_of_2_8_tflops": 0.1903370192742857,
       "tokens_per_param": 0.8325086702629924
     },
     "epochs_20": {
       "params": 117027592,
       "tokens": 389705940,
-      "seconds": 459884.28133113054,
-      "hours": 127.74563370309181,
-      "effective_tflops": 0.5950150887647999,
-      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "seconds": 513446.56126482214,
+      "hours": 142.62404479578393,
+      "effective_tflops": 0.532943653968,
+      "model_flops_utilisation_of_2_8_tflops": 0.1903370192742857,
       "tokens_per_param": 3.3300346810519694
     }
   }

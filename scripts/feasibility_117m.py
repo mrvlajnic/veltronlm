@@ -112,33 +112,56 @@ def trainable(params: int, seq: int, tok_per_s: float, epochs: float,
 
 
 def measure(cfg: ModelConfig, device, batch: int, seq: int, steps: int = 3) -> dict:
-    """Real timing: forward + backward + AdamW, on this GPU, with this backend."""
+    """Real timing: forward + backward + AdamW, on this GPU, with this backend.
+
+    Every trial fully releases its model, optimizer and tensors before returning. An
+    earlier version kept them alive, and because DirectML's single-allocation cap is only
+    3.71 GiB while the card can hold 10 GiB across many tensors, accumulated residue from
+    one trial made the next one fail. Those failures were an artefact of this harness, not
+    a hardware limit -- the report now separates them.
+    """
+    import gc
+
     model = VeltronLM(cfg).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4)
     ids = torch.randint(0, cfg.vocab_size, (batch, seq), device=device)
     labels = torch.randint(0, cfg.vocab_size, (batch, seq), device=device)
 
     times: list[float] = []
-    for i in range(steps + 2):
-        if device.type != "cpu":
-            torch.zeros(1, device=device).cpu()
-        t0 = time.perf_counter()
-        try:
+    oom = ""
+    out = None
+    try:
+        for i in range(steps + 2):
+            if device.type != "cpu":
+                torch.zeros(1, device=device).cpu()
+            t0 = time.perf_counter()
             out = model(ids, labels=labels, loss_chunk_tokens=4096)
             opt.zero_grad(set_to_none=True)
             out.loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
-        except RuntimeError as exc:
-            if "out of memory" in str(exc).lower() or "alloc" in str(exc).lower():
-                return {"status": "OOM", "batch": batch, "seq": seq,
-                        "reason": str(exc)[:200]}
+            if device.type != "cpu":
+                torch.zeros(1, device=device).cpu()
+            dt = time.perf_counter() - t0
+            if i >= 2:  # discard warm-up iterations
+                times.append(dt)
+    except RuntimeError as exc:
+        if "out of memory" in str(exc).lower() or "alloc" in str(exc).lower():
+            oom = str(exc)[:200]
+        else:
             raise
-        if device.type != "cpu":
-            torch.zeros(1, device=device).cpu()
-        dt = time.perf_counter() - t0
-        if i >= 2:  # discard warm-up iterations
-            times.append(dt)
+
+    # Full teardown. Without this the next trial inherits this one's VRAM.
+    del out, ids, labels, opt, model
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    from veltron.utils.device import empty_cache
+
+    empty_cache(device)
+
+    if oom:
+        return {"status": "OOM", "batch": batch, "seq": seq, "reason": oom}
 
     tps = batch * seq / statistics.median(times)
     return {
@@ -227,7 +250,7 @@ def main() -> int:
     if args.measure:
         print("\n--- measured throughput (real forward+backward+AdamW) ---")
         trials = []
-        for batch, seq in ((1, 2048), (1, 1024), (2, 1024), (2, 512)):
+        for batch, seq in ((4, 1024), (2, 2048), (2, 1024), (1, 2048), (2, 512)):
             r = measure(cfg, device, batch, seq, steps=2)
             trials.append(r)
             if r["status"] == "OK":
@@ -236,7 +259,7 @@ def main() -> int:
                       f"{r['effective_tflops']:>6.3f} TFLOP/s eff")
             else:
                 print(f"  b={batch} seq={seq}: OOM  {r['reason'][:70]}")
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
         ok = [t for t in trials if t["status"] == "OK"]
         results["measured"] = trials
         if ok:

@@ -1,0 +1,24 @@
+{
+  "single_allocation_max_mib": 3796,
+  "single_allocation_max_gib": 3.707,
+  "failure_message": "Could not allocate tensor with 4077844164 bytes. There is not enough GPU video memory available!",
+  "cumulative": {
+    "chunk_256_mib": {
+      "held_mib": 10240,
+      "allocations": 40
+    },
+    "chunk_512_mib": {
+      "held_mib": 10240,
+      "allocations": 20
+    },
+    "chunk_1024_mib": {
+      "held_mib": 9216,
+      "allocations": 9
+    }
+  },
+  "best_cumulative_mib": 10240,
+  "best_cumulative_gib": 10.0,
+  "windows_reported_in_use_gib": 1.11,
+  "unaccounted_gib": 7.18,
+  "interpretation": "Single-allocation cap"
+}

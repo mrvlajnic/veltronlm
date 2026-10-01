@@ -265,10 +265,12 @@ REGISTRY: dict[str, ConfigEntry] = {
                 max_seq_len=4096,
             ),
             tier="T3",
-            purpose="Upper bound of credible single-GPU training here",
+            purpose="Above the measured single-GPU ceiling",
             trainable_on_this_host=False,
             notes=(
-                "~250M params. Multi-day run; used for scaling-law fits only."
+                "704,724,480 params. VERIFIED NOT trainable: OOM at b=1 seq=512 in a fresh "
+                "process. Optimizer state alone is 11.26 GiB against a 10.00 GiB holdable "
+                "budget."
             ),
         ),
         _entry(

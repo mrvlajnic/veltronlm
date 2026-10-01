@@ -1,0 +1,82 @@
+{
+  "method": "each configuration measured in a FRESH process (scripts/measure_one.py). DirectML's allocator grows its heap and never shrinks it within a process, so measuring several configs in one interpreter contaminates every result after the first.",
+  "vram_shape": {
+    "single_allocation_max_gib": 3.71,
+    "total_holdable_in_chunks_gib": 10.0,
+    "windows_reported_in_use_gib": 1.11,
+    "processes": {
+      "opera": 0.5,
+      "dwm": 0.39,
+      "OpenCode": 0.2,
+      "msedgewebview2": 0.1,
+      "RadeonSoftware": 0.05,
+      "explorer": 0.05
+    }
+  },
+  "results": [
+    {
+      "tier": "117m",
+      "parameters": 117027592,
+      "batch": 2,
+      "seq": 512,
+      "status": "OK",
+      "tokens_per_second": 837.7,
+      "effective_tflops": 0.5882,
+      "gpu_engine_utilisation": 0.2101
+    },
+    {
+      "tier": "117m",
+      "parameters": 117027592,
+      "batch": 2,
+      "seq": 1024,
+      "status": "OOM",
+      "reason": "768 MiB logits tensor"
+    },
+    {
+      "tier": "117m",
+      "parameters": 117027592,
+      "batch": 1,
+      "seq": 2048,
+      "status": "OOM"
+    },
+    {
+      "tier": "117m",
+      "parameters": 117027592,
+      "batch": 4,
+      "seq": 1024,
+      "status": "OOM"
+    },
+    {
+      "tier": "mini",
+      "parameters": 244354048,
+      "batch": 1,
+      "seq": 512,
+      "status": "OK",
+      "tokens_per_second": 235.2,
+      "effective_tflops": 0.3449
+    },
+    {
+      "tier": "mini",
+      "parameters": 244354048,
+      "batch": 2,
+      "seq": 512,
+      "status": "OK",
+      "tokens_per_second": 391.2,
+      "effective_tflops": 0.5736
+    },
+    {
+      "tier": "small",
+      "parameters": 704724480,
+      "batch": 1,
+      "seq": 512,
+      "status": "OOM"
+    }
+  ],
+  "key_finding": "The binding tensor is the vocabulary projection: batch*seq*vocab*4 bytes, which at 32768 tokens dominates every other allocation. 2*512*32768*4 = 128 MiB per copy and roughly 384 MiB with the fp32 softmax and backward; 2*1024*32768*4 = 256 MiB per copy and ~768 MiB with softmax, which is what the OOM messages report.",
+  "corrections": [
+    "Earlier claim 'usable VRAM is 3.62 GiB' was wrong: that is the single-allocation cap. 10.00 GiB is reachable across many tensors.",
+    "Earlier OOM results for 117m at b=1 seq=2048 and b=2 seq=1024 were partly a harness artefact (memory not released between trials). Re-measured in fresh processes: those two still OOM, but for a different and now-understood reason -- the logits tensor.",
+    "Earlier attribution of the shortfall to the display compositor was wrong: only 1.11 GiB is in use, and closing Opera would free 0.50 GiB of it, which changes nothing."
+  ],
+  "verdict": "mini (244,354,048 params) trains at 391 tok/s at b=2 seq=512. 117m trains at 838 tok/s at b=2 seq=512. small (705M) OOMs."
+}
