@@ -89,6 +89,139 @@ python -m veltron.cli info                             # artefact inventory
 
 ---
 
+# 2026-10-02 01:35 — WINDOWS AUTOMATION BUILT; mini run needs resuming
+
+Read this section before anything else. It supersedes section 4.
+
+## State right now
+
+**No training is running.** The GPU is free.
+
+| | |
+|---|---|
+| Latest valid checkpoint | `checkpoints/mini-pretrain/step-00000500` |
+| Step / tokens | 500 / 4,096,000 |
+| Model | `veltronlm-mini`, 244,354,048 params |
+| val loss / perplexity | 6.9695 / 1063.7 (at step 250 it was 7.5122 / 1830.2) |
+| Checkpoints on disk | step-00000250, step-00000500 — both valid, 7.03 GiB total |
+| Free disk | 54 GiB |
+
+## How to resume (one command)
+
+```powershell
+$env:PYTHONPATH = "E:\Posao\testmaxspace"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\start_veltron_training.ps1
+```
+
+Verified to resume from step 500, NOT from step 0. `configs/pretrain_mini_evening.yaml`
+already contains `resume: auto`.
+
+## INCIDENT — how the mini run stopped, and why
+
+The run died at ~step 550 with:
+
+```
+RuntimeError: Could not allocate tensor with 134217728 bytes.
+There is not enough GPU video memory available!
+```
+
+**Cause: I caused it.** While testing the automation I launched a second, isolated test
+trainer on a different config. Two trainers on one 12 GiB card exhausted VRAM between them
+and the real run OOM'd.
+
+Per-config duplicate detection had allowed it, because the second trainer used a different
+config file. That check has been replaced: `start_veltron_training.ps1` now refuses if
+**any** `veltron.train` process exists, whatever its config, unless `-ForceConcurrent` is
+passed. Exit code 11 means "another trainer is running".
+
+**Nothing was lost.** Checkpoints are written atomically (staging dir, then rename, then a
+COMPLETE marker), so a crash mid-write cannot corrupt one. Step 500 verified valid
+immediately afterwards. This is the exact scenario `docs/recovery.md` describes.
+
+**Rule going forward: never run a second trainer, even a test one, while the real run is
+active.** Use `status_veltron_training.ps1` first.
+
+## Automation scripts (all under scripts/windows/)
+
+| Script | Purpose |
+|---|---|
+| `status_veltron_training.ps1` | Read-only dashboard. Safe while training. `-Watch` to poll |
+| `start_veltron_training.ps1` | Start/resume. Refuses duplicates. `-Background`, `-DryRun`, `-MaxHours` |
+| `stop_veltron_training.ps1` | Cooperative stop via stop file. `-Force` waits for the next checkpoint first |
+| `run_veltron_training_window.ps1` | `-Hours N` then stops cleanly and prints a summary |
+| `shutdown_after_training.ps1` | Wait, verify, report. Shuts down ONLY with `-ShutdownWhenDone` |
+| `install_desktop_shortcut.ps1` | Creates the three desktop shortcuts |
+| `install_scheduled_task.ps1` | Creates "VeltronLM Auto Resume". `-Remove` cancels it |
+| `veltron_common.ps1` | Shared helpers. Dot-sourced, not run directly |
+
+Also: `scripts/veltron_state.py` — JSON training state, reusing the trainer's own
+`CheckpointManager` so PowerShell cannot disagree with the trainer about what is resumable.
+
+Supporting change: `TrainConfig.stop_file` (default `""`, so no behaviour change for
+existing runs). When set, the trainer polls it once per step and stops at a step boundary —
+after the in-flight step, after any due evaluation, after any due checkpoint — then runs
+its normal final-eval and final-save path.
+
+## What was NOT done yet
+
+* Desktop shortcuts were never installed (installer written and parse-checked only)
+* The scheduled task was dry-run (`-WhatIf`) only; no task exists
+* Wake timers are still DISABLED
+* These scripts are uncommitted only in the sense that they are not yet pushed
+
+## Wake-from-sleep findings (measured, not assumed)
+
+```
+Modern Standby (S0 low power idle) : present
+Standby S3                         : available
+Hibernate                          : available
+active power scheme                : My Custom Plan 1
+wake timers (AC)                   : DISABLED
+```
+
+* Waking from **S3 sleep**: possible once the wake-timer setting is on —
+  `install_scheduled_task.ps1 -EnableWakeTimers`
+* Waking from **hibernation**: needs an RTC alarm in BIOS/UEFI. Windows cannot verify
+  this; firmware settings were not touched
+* Waking from **full shutdown**: not possible via Task Scheduler alone; needs BIOS RTC
+  alarm or Wake-on-LAN from an always-on device
+
+## Bugs found by testing the automation
+
+Each was found by running the scripts, not by reading them:
+
+1. `-MaxHours` multiplied by 3600, handing the trainer 108 *hours* for a 108-second window
+2. Process detection matched the run name, which never appears in the command line — only
+   the config filename does. It reported "not running" while the trainer held 10.8 GiB
+3. `Split-Path -Leaf $null` threw whenever a run directory did not exist — a normal state
+   on a first run
+4. Merging stderr into the success stream turned a harmless pynvml deprecation warning
+   into a terminating `NativeCommandError`, so a successful run reported failure
+5. Number formatting used the machine locale: perplexity 1063.7 rendered as `1.063,7`
+6. Duplicate detection was per-config, which is what allowed the incident above
+
+All fixed. 184 tests pass.
+
+## Verified by test
+
+| Test | Result |
+|---|---|
+| status while training active | PASS, found PID 17860, GPU breakdown, evals |
+| duplicate protection, same config | PASS, exit 10, refused |
+| duplicate protection, different config | PASS, exit 11, refused |
+| checkpoint discovery + validity | PASS, uses repo verifier |
+| manual resume | PASS, `resumed at step 26`, LR curve continued |
+| bounded window, 1.9 min | PASS, `stop reason: stop_file_requested`, checkpoint kept |
+| bounded window, 1.3 min | PASS after fixing the 3600x bug |
+| foreground start/resume | PASS, exit 0 |
+| graceful stop via stop file | PASS |
+| paths containing spaces | PASS |
+| logs written | PASS, `logs/mini_train_*.log` |
+| scheduled task dry run | PASS, `-WhatIf` |
+| tests still pass | PASS, 184 |
+
+---
+
 ## 4a. LIVE RUN: veltronlm-mini (244,354,048 params)
 
 Started 2026-10-01 ~23:47. **Leave it running overnight.**

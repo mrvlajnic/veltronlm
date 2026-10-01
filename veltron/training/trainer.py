@@ -74,6 +74,7 @@ class TrainConfig:
 
     resume: str = "auto"                # auto | none | path
     max_hours: float = 0.0              # 0 disables the wall-clock budget
+    stop_file: str = ""                 # if set, existence ends training at a step boundary
     nan_patience: int = 3               # consecutive non-finite losses tolerated
     overfit_subset: int = 0             # >0 restricts the corpus to N windows (canary runs)
     loss_chunk_tokens: int = 4096    # bounds fp32 log-softmax memory; 0 disables chunking
@@ -429,6 +430,22 @@ class Trainer:
         elapsed = time.time() - self.state.started_at
         return elapsed >= self.cfg.max_hours * 3600
 
+    def _stop_requested(self) -> bool:
+        """True when a stop file has been created.
+
+        Windows has no clean way to signal a detached process: ``Stop-Process`` is an
+        immediate termination with no chance to finish the in-flight step, and Ctrl+C is
+        unavailable to a process launched detached. A file is the only cooperative signal
+        that survives process boundaries, and polling it costs one ``stat`` per step
+        (~20 s here).
+
+        Polled only when ``stop_file`` is configured, so the default path is unchanged and
+        existing runs and checkpoints are unaffected.
+        """
+        if not self.cfg.stop_file:
+            return False
+        return Path(self.cfg.stop_file).exists()
+
     def train(self) -> dict[str, Any]:
         """Run the training loop to ``max_steps`` or until the wall-clock budget ends."""
         self._write_config()
@@ -542,6 +559,17 @@ class Trainer:
                 stop_reason = "wall_clock_budget"
                 log.info("wall-clock budget of %.2fh exhausted at step %d",
                          self.cfg.max_hours, self.state.step)
+                break
+
+            if self._stop_requested():
+                # Checked here, deliberately: after the optimizer step, after the
+                # scheduled evaluation, and after the scheduled checkpoint write. Breaking
+                # at this point means the step that was in flight has completed and any
+                # checkpoint that was due has been written, then the loop falls through to
+                # the final evaluation, final checkpoint and summary.
+                stop_reason = "stop_file_requested"
+                log.info("stop file %s detected; stopping cleanly at step %d",
+                         self.cfg.stop_file, self.state.step)
                 break
 
             if self.state.consecutive_nonfinite > self.cfg.nan_patience:
