@@ -267,7 +267,31 @@ REGISTRY: dict[str, ConfigEntry] = {
             tier="T3",
             purpose="Upper bound of credible single-GPU training here",
             trainable_on_this_host=False,
-            notes="~250M params. Multi-day run; used for scaling-law fits only.",
+            notes=(
+                "~250M params. Multi-day run; used for scaling-law fits only."
+            ),
+        ),
+        _entry(
+            "117m",
+            ModelConfig(
+                name="veltronlm-117m",
+                vocab_size=32768,
+                n_layers=11,
+                d_model=704,
+                n_heads=16,
+                n_kv_heads=4,
+                d_ff=2464,
+                max_seq_len=2048,
+            ),
+            tier="T2",
+            purpose="Largest model this GPU can train with a real token budget",
+            trainable_on_this_host=True,
+            notes=(
+                "117,027,592 params, found by grid search in "
+                "scripts/feasibility_117m.py. Optimizer state 1.74 GiB against a measured "
+                "3.62 GiB DirectML allocation ceiling. Measured 847 tok/s at b=2 seq=512, "
+                "764 tok/s at b=1 seq=1024. ~6.4 h per epoch over dataset-v1."
+            ),
         ),
         _entry(
             "4b",

@@ -1,0 +1,111 @@
+{
+  "device": {
+    "kind": "directml",
+    "torch_device_type": "privateuseone",
+    "name": "DirectML device",
+    "total_memory_gb": 8.0,
+    "supports_bf16": false,
+    "supports_fp16": true,
+    "supports_fp8": false
+  },
+  "config": {
+    "name": "veltronlm-117m",
+    "vocab_size": 32768,
+    "n_layers": 11,
+    "d_model": 704,
+    "n_heads": 16,
+    "n_kv_heads": 4,
+    "d_ff": 2464,
+    "max_seq_len": 2048,
+    "rope_theta": 10000.0,
+    "tie_embeddings": false,
+    "norm_eps": 1e-05,
+    "initializer_range": 0.02,
+    "use_qk_norm": true,
+    "attn_dropout": 0.0,
+    "ffn_dropout": 0.0,
+    "rope_scaling_factor": 1.0,
+    "rope_scaling_beta_fast": 32.0,
+    "rope_scaling_beta_slow": 1.0,
+    "rope_scaling_original_max_seq_len": 8192,
+    "head_dim": 44,
+    "kv_dim": 176,
+    "gqa_group_size": 4
+  },
+  "parameters": 117027592,
+  "analytic_matches_meta": true,
+  "breakdown": {
+    "embedding": 23068672,
+    "attention_total": 13630408,
+    "attention_q": 5451776,
+    "attention_k": 1362944,
+    "attention_v": 1362944,
+    "attention_out": 5451776,
+    "attention_qk_norm": 968,
+    "mlp_total": 57243648,
+    "norms_total": 17160,
+    "output_head": 23068672,
+    "per_layer": 6444504,
+    "total": 117027592,
+    "non_embedding": 93958920
+  },
+  "measured": [
+    {
+      "status": "OOM",
+      "batch": 1,
+      "seq": 2048,
+      "reason": "Could not allocate tensor with 805044208 bytes. There is not enough GPU video memory available!"
+    },
+    {
+      "status": "OK",
+      "batch": 1,
+      "seq": 1024,
+      "seconds_per_step": 1.339,
+      "tokens_per_second": 764.5,
+      "effective_tflops": 0.5368
+    },
+    {
+      "status": "OOM",
+      "batch": 2,
+      "seq": 1024,
+      "reason": "Could not allocate tensor with 804650960 bytes. There is not enough GPU video memory available!"
+    },
+    {
+      "status": "OK",
+      "batch": 2,
+      "seq": 512,
+      "seconds_per_step": 1.208,
+      "tokens_per_second": 847.4,
+      "effective_tflops": 0.595
+    }
+  ],
+  "budget": {
+    "epochs_1": {
+      "params": 117027592,
+      "tokens": 19485297,
+      "seconds": 22994.214066556528,
+      "hours": 6.387281685154591,
+      "effective_tflops": 0.5950150887647999,
+      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "tokens_per_param": 0.16650173405259847
+    },
+    "epochs_5": {
+      "params": 117027592,
+      "tokens": 97426485,
+      "seconds": 114971.07033278263,
+      "hours": 31.936408425772953,
+      "effective_tflops": 0.5950150887647999,
+      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "tokens_per_param": 0.8325086702629924
+    },
+    "epochs_20": {
+      "params": 117027592,
+      "tokens": 389705940,
+      "seconds": 459884.28133113054,
+      "hours": 127.74563370309181,
+      "effective_tflops": 0.5950150887647999,
+      "model_flops_utilisation_of_2_8_tflops": 0.2125053888445714,
+      "tokens_per_param": 3.3300346810519694
+    }
+  }
+}

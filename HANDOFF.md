@@ -115,7 +115,61 @@ python -m veltron.train --model micro --tokenizer models/tok-mini-32k \
 
 At step 825 / 13,516,800 tokens when this file was written. ~3,300–3,700 tok/s sustained.
 
-### When it finishes
+### Run status
+
+The micro run was **terminated externally** at step 1175 (no torn staging directory, no
+traceback — a clean external kill, most likely the session ending). summary.json was
+therefore never written, but all four checkpoints are valid and step-00001000 is
+intact with **validation loss 4.198 / perplexity 66.6**.
+
+Resume it, or start the bigger tier instead:
+
+`powershell
+# resume micro where it stopped
+python -m veltron.train --model micro --run-name micro-pretrain --resume auto ...
+
+# or train the 117m tier (see below)
+python -m veltron.train --config configs/pretrain_117m.yaml
+`
+
+### The 117m tier — verified trainable
+
+Added after the micro run finished, in response to "can we hit 117 million".
+**117,027,592 parameters**, found by grid search (scripts/feasibility_117m.py) rather
+than hand-tuned.
+
+| | |
+|---|---|
+| Layers / d_model | 11 / 704 |
+| Heads | 16 query / 4 KV, head_dim 44 |
+| FFN (SwiGLU) | 2,464 |
+| Optimizer state | **1.74 GiB** |
+| Measured throughput | **847 tok/s** at b=2 seq=512; **764 tok/s** at b=1 seq=1024 |
+| Effective TFLOP/s | 0.595 (21.3% of the 2.80 TFLOP/s matmul peak) |
+| One epoch of dataset-v1 | **6.4 hours** |
+| =1 seq=2048 / =2 seq=1024 | **OOM** — exceeds the 3.62 GiB ceiling |
+
+**Answer: yes.** The blocker for 4B is optimizer state, not GPU class. At 117M the
+optimizer state is 1.74 GiB against a measured 3.62 GiB ceiling.
+
+### Measured VRAM ceiling: 3.62 GiB, not 12 GiB
+
+scripts/measure_vram.py binary-searches the largest allocation DirectML will satisfy:
+**3,712 MiB**. This GPU drives the desktop, so the compositor holds a share of the 12 GiB
+that compute cannot reclaim. Every memory figure in this project is measured against that
+ceiling, not the nameplate.
+
+| Tier | Optimizer state | Fits 3.62 GiB? |
+|---|---:|---|
+| 4b | 60.00 GiB | **no — 16.6x over** |
+| small | 11.26 GiB | **no — 3.1x over** |
+| mini | 3.91 GiB | **no — over before activations** |
+| **117m** | **1.74 GiB** | **yes** |
+| micro | 0.89 GiB | yes |
+
+This corrects the earlier docs/environment.md figure of 12 GiB usable.
+
+### When the resumed run finishes
 
 1. `checkpoints/micro-pretrain/summary.json` appears.
 2. **Evaluate immediately** — this is the highest-value next step:

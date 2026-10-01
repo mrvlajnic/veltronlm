@@ -1,0 +1,51 @@
+# The 117M tier: the largest model this GPU can actually train.
+#
+#   python -m veltron.train --config configs/pretrain_117m.yaml
+#
+# Sized against the MEASURED DirectML allocation ceiling of 3.62 GiB
+# (scripts/measure_vram.py), not the card's 12 GiB nameplate. This GPU drives the
+# display, so the compositor holds a share of VRAM that compute cannot reclaim.
+
+base: base.yaml
+
+train:
+  run_name: 117m-pretrain
+  model_config: 117m
+  dataset_root: datasets/dataset-v1
+  dataset_version: dataset-v1
+  tokenizer_dir: models/tok-mini-32k
+  output_dir: checkpoints
+
+  # b=2 seq=512 and b=1 seq=1024 both fit and were measured. b=1 seq=2048 and
+  # b=2 seq=1024 both OOM against the 3.62 GiB ceiling.
+  #   b=2 seq=512  -> 847 tok/s  (measured)
+  #   b=1 seq=1024 -> 764 tok/s  (measured)
+  seq_len: 512
+  micro_batch_size: 2
+  grad_accum_steps: 16         # 16,384 tokens per optimiser step, same as the micro run
+
+  # dataset-v1 is 19,485,297 tokens: 1 epoch = 6.4 h at the measured 847 tok/s.
+  # ~1.2 tokens/parameter is still far below Chinchilla-optimal (20), so more
+  # epochs over the same corpus is the only way to spend the model on this host.
+  max_steps: 12000
+  max_hours: 0                 # no wall-clock budget; cancel with Ctrl-C, checkpoints are atomic
+
+  lr: 7.0e-4
+  warmup_steps: 400
+  schedule: cosine
+  min_lr_ratio: 0.1
+  weight_decay: 0.1
+  grad_clip: 1.0
+
+  eval_interval: 500
+  eval_batches: 20
+  log_interval: 50
+  save_interval: 500
+  keep_last: 3                 # ~1.9 GiB per fp32 checkpoint at this size
+  keep_best: 2
+  resume: auto
+
+  device: auto
+  precision: auto              # resolves to fp32 on DirectML: no aten::embedding in autocast
+  seed: 1234
+  run_canary_first: true

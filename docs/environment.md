@@ -183,6 +183,42 @@ materialises the 4B configuration, quantizes it and measures real latency on thi
 
 ---
 
+## 4b. Measured allocation ceiling: 3.62 GiB, not 12 GiB
+
+AMD's NVML is unavailable, and Win32_VideoController.AdapterRAM reports a truncated
+32-bit value (4 GiB for this 12 GiB card). Neither is usable for capacity planning.
+scripts/measure_vram.py therefore measures the ceiling directly, by binary-searching the
+largest allocation DirectML will actually satisfy on this host:
+
+| Request | Result |
+|---:|---|
+| 3,584 MiB | OK |
+| **3,712 MiB** | **OK — largest single successful allocation** |
+| 3,744 MiB | FAIL |
+| 8,192 MiB | FAIL: not enough GPU video memory |
+
+**Effective compute budget: ~3.62 GiB**, against 12 GiB of physical VRAM.
+
+The difference is the display. This GPU drives the desktop, so the compositor holds a
+share of VRAM that compute cannot reclaim, and DirectML will not promise memory the GPU
+cannot back. Every memory figure in this document is measured against the 3.62 GiB
+ceiling, not the 12 GiB nameplate.
+
+### What that ceiling permits
+
+| Tier | Optimizer state | Fits 3.62 GiB? |
+|---|---:|---|
+| 4b | 60.00 GiB | **no — 16.6x over** |
+| small | 11.26 GiB | **no — 3.1x over** |
+| mini | 3.91 GiB | **no — already over before activations** |
+| **117m** | **1.74 GiB** | **yes**, 1.9 GiB left for activations |
+| micro | 0.89 GiB | yes |
+
+mini at 244M is *just* over the ceiling on optimizer state alone, which is why the
+registry marks it trainable but unverified, and why 117m is the practical ceiling.
+
+---
+
 ## 5. Honest status summary
 
 | Capability | Status | Evidence |

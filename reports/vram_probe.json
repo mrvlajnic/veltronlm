@@ -1,0 +1,94 @@
+{
+  "backend": {
+    "kind": "directml",
+    "torch_device_type": "privateuseone",
+    "name": "DirectML device",
+    "total_memory_gb": 8.0,
+    "supports_bf16": false,
+    "supports_fp16": true,
+    "supports_fp8": false
+  },
+  "reported_gb": 8.0,
+  "coarse": [
+    {
+      "mb": 256,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 512,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 1024,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 2048,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 3072,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 4096,
+      "ok": false,
+      "message": "DirectML rejected this allocation (not necessarily OOM)"
+    },
+    {
+      "mb": 5120,
+      "ok": false,
+      "message": "DirectML rejected this allocation (not necessarily OOM)"
+    },
+    {
+      "mb": 6144,
+      "ok": false,
+      "message": "DirectML rejected this allocation (not necessarily OOM)"
+    },
+    {
+      "mb": 7168,
+      "ok": false,
+      "message": "DirectML rejected this allocation (not necessarily OOM)"
+    },
+    {
+      "mb": 8192,
+      "ok": false,
+      "message": "Could not allocate tensor with 4294800464 bytes. There is not enough GPU video memory available!"
+    }
+  ],
+  "binary_search": [
+    {
+      "mb": 3584,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 3840,
+      "ok": false,
+      "message": "Could not allocate tensor with 4026410116 bytes. There is not enough GPU video memory available!"
+    },
+    {
+      "mb": 3712,
+      "ok": true,
+      "message": ""
+    },
+    {
+      "mb": 3776,
+      "ok": false,
+      "message": "The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action."
+    },
+    {
+      "mb": 3744,
+      "ok": false,
+      "message": "The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action."
+    }
+  ],
+  "largest_single_allocation_mib": 3712,
+  "practical_training_budget_gib": 4.0,
+  "note": "AMD NVML is unavailable and WMI reports a truncated value, so this is measured rather than queried. The GPU also drives the display."
+}
