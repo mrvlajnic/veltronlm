@@ -89,6 +89,105 @@ python -m veltron.cli info                             # artefact inventory
 
 ---
 
+# 2026-10-02 14:20 — UNATTENDED RUN LIVE
+
+Read this section first; it supersedes everything above about running state.
+
+## Training is RUNNING right now
+
+```
+PID 6084   checkpoints/mini-pretrain   8-hour budget, ends about 20:15
+python -m veltron.train --config configs/pretrain_mini_evening.yaml \
+        --set stop_file=<run>/STOP_REQUEST
+```
+
+Resumed from **step-00000500**. At the time of writing: step ~650, loss ~5.59,
+~1,090 tok/s, ~11.8 s/step. Expect roughly step 3,000 / 24M tokens by the end,
+about 1.3 epochs.
+
+PID and parameters: `checkpoints/mini-pretrain/AUTORUN_INFO`
+
+## Why batch size changed to 1 (this is important)
+
+The run had been dying at **step ~550 every time**, reproducibly, with:
+
+```
+RuntimeError: Could not allocate tensor with 134217728 bytes.
+```
+
+`134217728` is exactly `2 x 512 x 32768 x 4` — **the vocabulary projection**. It is not a
+random tensor. `mini` holds 3.72 GiB of persistent fp32 optimizer state
+(params + grads + Adam m + v for 244M parameters), which leaves too little headroom for a
+134 MiB transient plus activations.
+
+Fix: `micro_batch_size` 2 -> 1, `grad_accum_steps` 8 -> 16. Same 8,192-token effective
+batch, half the projection (67 MiB) and half the activations. Measured ~1,100 tok/s, no
+OOM. `configs/pretrain_mini_evening.yaml` is updated.
+
+**fp16 weights were tried and are NOT viable.** `precision=fp16_weights` resumed correctly
+and then logged **zero steps in 45 minutes** before being killed, with no error. AdamW's
+moving average already falls back to the host for `aten::lerp` on DirectML; in fp16 it is
+slower still. The config pins `precision: fp32` with a comment saying so.
+
+## Safety net is installed
+
+**Scheduled task "VeltronLM Keepalive"** — every 20 minutes for 24 h, starting 2 minutes
+after registration.
+
+It calls `start_veltron_training.ps1`, which refuses to start when a trainer is already
+running. So the repeated firings do nothing while training is healthy, and a crashed run is
+restarted within 20 minutes. Verified by firing it manually during a live run: **no
+duplicate started, the running trainer was untouched.**
+
+```powershell
+Get-ScheduledTask -TaskName "VeltronLM Keepalive" | Get-ScheduledTaskInfo   # status
+Start-ScheduledTask  -TaskName "VeltronLM Keepalive"                        # run now
+Disable-ScheduledTask -TaskName "VeltronLM Keepalive"                       # pause
+powershell -ExecutionPolicy Bypass -File scripts\windows\install_scheduled_task.ps1 -Remove
+```
+
+Wake timers are irrelevant here: **sleep is disabled on this machine**, so the task always
+finds the PC awake. It still sets `WakeToRun`, which is a no-op in that case.
+
+## Desktop shortcuts created
+
+Location: **`C:\Users\Gamer\OneDrive\Desktop`** (OneDrive-redirected Desktop)
+
+* `VeltronLM - Resume Training.lnk`  — 8-hour window, stops cleanly
+* `VeltronLM - Stop Training.lnk`    — safe stop, never a raw kill
+* `VeltronLM - Status.lnk`           — read-only dashboard, `-Watch`
+
+## When you get home (~19:30-20:00)
+
+Training will still be running. To let it finish and keep the checkpoint:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\shutdown_after_training.ps1
+```
+
+That waits, verifies, prints the preserved checkpoint, and **does not shut down** unless
+you pass `-ShutdownWhenDone`. Or just leave it; the 8-hour budget ends ~20:15 on its own.
+
+To stop it now instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\stop_veltron_training.ps1
+```
+
+To look at progress:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\status_veltron_training.ps1
+```
+
+## Disk note
+
+Each `mini` checkpoint is **3.77 GiB**. Config keeps `keep_last: 3, keep_best: 2`, so up to
+5 checkpoints = ~19 GiB. There was 54 GiB free, so this fits, but check `free disk` in the
+status output. If it gets tight, lower `keep_last` to 2.
+
+---
+
 # 2026-10-02 01:35 — WINDOWS AUTOMATION BUILT; mini run needs resuming
 
 Read this section before anything else. It supersedes section 4.

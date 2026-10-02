@@ -35,9 +35,21 @@
 .PARAMETER TaskName
     Task name. Default "VeltronLM Auto Resume".
 
+.PARAMETER EveryMinutes
+    Re-check on this interval instead of once a day. The task is a SAFETY NET: it runs
+    `start_veltron_training.ps1`, which refuses to start a trainer when one is already
+    running. So with -EveryMinutes 30 the task fires often, does nothing while training is
+    healthy, and restarts it within 30 minutes if it dies. With the default daily trigger a
+    crash would cost the rest of the day.
+
+.PARAMETER MaxHours
+    Window handed to the trainer when the task does start it. This is what bounds a single
+    unattended run.
+
 .EXAMPLE
     .\install_scheduled_task.ps1 -Time 08:00 -Hours 6 -EnableWakeTimers
-    .\install_scheduled_task.ps1 -Time 07:30 -Hours 8 -WhatIf
+    .\install_scheduled_task.ps1 -EveryMinutes 30 -MaxHours 8 -TaskName "VeltronLM Keepalive"
+    .\install_scheduled_task.ps1 -Remove
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -45,7 +57,9 @@ param(
     [double]$Hours = 6,
     [string]$TaskName = 'VeltronLM Auto Resume',
     [switch]$EnableWakeTimers,
-    [switch]$Remove
+    [switch]$Remove,
+    [int]$EveryMinutes = 0,
+    [double]$MaxHours = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -118,21 +132,42 @@ if ($EnableWakeTimers) {
 
 # ------------------------------------------------------------------- create
 $windowScript = Join-Path $PSScriptRoot 'run_veltron_training_window.ps1'
+$startScript  = Join-Path $PSScriptRoot 'start_veltron_training.ps1'
 if (-not (Test-Path $windowScript)) {
     Write-Host "  missing $windowScript" -ForegroundColor Red; exit 2
 }
 
 $psExe = (Get-Command powershell.exe).Source
-$arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$windowScript`" -Hours $Hours -RunName 'mini-pretrain' -GraceMinutes 10"
+
+# Two shapes of task:
+#   EveryMinutes > 0  -> a keepalive safety net. It calls start_veltron_training.ps1,
+#                        which exits 10/11 when a trainer is already running, so repeated
+#                        firings are harmless and a crashed run is restarted automatically.
+#   otherwise          -> a daily window that runs the bounded-window script.
+if ($EveryMinutes -gt 0) {
+    $bh = if ($MaxHours -gt 0) { $MaxHours } else { $Hours }
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`" -RunName 'mini-pretrain' -MaxHours $bh -Background"
+} else {
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$windowScript`" -Hours $Hours -RunName 'mini-pretrain' -GraceMinutes 10"
+}
 
 Write-Host ''
 Write-Host '  creating scheduled task...' -ForegroundColor Cyan
 
 if ($PSCmdlet.ShouldProcess($TaskName, 'create scheduled task')) {
     $action = New-ScheduledTaskAction -Execute $psExe -Argument $arguments -WorkingDirectory $script:VeltronRepo
-    # WakeToRun is what asks Windows to leave sleep at the trigger time. It only works with
-    # the wake-timer setting enabled and is a no-op if the machine is already awake.
-    $trigger = New-ScheduledTaskTrigger -Daily -At ([datetime]::ParseExact($Time, 'HH:mm', $null))
+    if ($EveryMinutes -gt 0) {
+        # RepetitionInterval/RepetitionDuration are the supported cmdlet parameters.
+        # Assigning to $trigger.Repetition.Interval fails: the Repetition object returned
+        # by New-ScheduledTaskTrigger has no settable Interval property.
+        $trigger = New-ScheduledTaskTrigger `
+            -Once `
+            -At (Get-Date).AddMinutes(2) `
+            -RepetitionInterval (New-TimeSpan -Minutes $EveryMinutes) `
+            -RepetitionDuration (New-TimeSpan -Days 1)
+    } else {
+        $trigger = New-ScheduledTaskTrigger -Daily -At ([datetime]::ParseExact($Time, 'HH:mm', $null))
+    }
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet `
         -AllowStartIfOnBatteries `
@@ -142,13 +177,14 @@ if ($PSCmdlet.ShouldProcess($TaskName, 'create scheduled task')) {
         -MultipleInstances IgnoreNew `
         -RestartCount 2 `
         -RestartInterval (New-TimeSpan -Minutes 5)
-    # Enable the hidden "wake the computer" flag on the trigger.
+    # Ask Windows to leave sleep at the trigger time. No-op when the machine is awake,
+    # which is the normal case here since sleep is disabled.
     $settings.WakeToRun  = $true
     $settings.Hidden     = $false
 
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
         -Principal $principal -Settings $settings `
-        -Description "Resume VeltronLM training for $Hours hours at $Time, then stop cleanly." `
+        -Description "VeltronLM training safety net. Refuses to start when a trainer is already running." `
         -Force | Out-Null
 
     Write-Host "  created: $TaskName" -ForegroundColor Green

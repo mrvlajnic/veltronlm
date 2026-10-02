@@ -38,11 +38,18 @@ train:
   output_dir: checkpoints
 
   seq_len: 512
-  micro_batch_size: 2
-  grad_accum_steps: 8         # 8,192 tokens per step, ~6.8 s at 1,690 tok/s
+  # micro_batch_size 1, NOT 2. At batch 2 the vocabulary projection allocates exactly
+  # 2*512*32768*4 = 134,217,728 bytes, and that is the tensor the OOM named. Persistent
+  # optimizer state for 244M parameters is 3.72 GiB in fp32 (params + grads + Adam m + v),
+  # which leaves too little headroom for a 134 MiB transient plus activations. Batch 1
+  # halves the projection to 67 MiB and the activations with it, and accumulates twice as
+  # many micro-steps to hold the same 8,192-token effective batch.
+  # Measured: b=1 accum=16 -> ~1,100 tok/s, no OOM. b=2 accum=8 -> OOM at step ~550.
+  micro_batch_size: 1
+  grad_accum_steps: 16        # 8,192 tokens per step, same as before
 
   max_steps: 6000
-  max_hours: 11.0             # free evening; stops cleanly at a step boundary
+  max_hours: 8.0              # set by the unattended launch; stops at a step boundary
 
   # 6e-4 is the standard peak for a model of this size. The micro run used the same
   # value at 55.7M parameters, so this is not a swept optimum -- scripts/exp_lr.py
@@ -78,6 +85,10 @@ train:
   resume: auto                # safe to re-run after a kill
 
   device: auto
-  precision: auto
+  precision: fp32
+  # fp16_weights was tried and is NOT viable here: it resumed at step 500 and then logged
+  # zero steps in 45 minutes before being killed, with no error. AdamW's moving average
+  # already falls back to the host for aten::lerp on DirectML; doing that in fp16 makes it
+  # slower still. Sticking with fp32.
   seed: 1234
   run_canary_first: true
