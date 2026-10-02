@@ -1,4 +1,46 @@
-# HANDOFF — VeltronLM
+# HANDOFF - VeltronLM
+
+> ### CURRENT STATE -- 2026-10-02 22:40
+>
+> **Nothing is training. The `mini` run COMPLETED cleanly at 22:37.**
+>
+> | | |
+> |---|---|
+> | Latest checkpoint | `checkpoints/mini-pretrain/step-00004134` |
+> | Best checkpoint | `checkpoints/mini-pretrain/step-00003250` |
+> | Model | `veltronlm-mini`, 244,354,048 params |
+> | Tokens trained | 33,865,728 (1.74 epochs) |
+> | **Train loss** | **6.15 -> 3.42** -- the number to quote |
+> | Stop reason | `wall_clock_budget`, clean, 8 h 1 m |
+> | Failure budget | **all zero** (no OOM / NaN / grad explosion / corruption) |
+> | Checkpoints | 5, all valid, 17.59 GiB; 44 GiB free disk |
+> | Scheduled tasks | none -- the keepalive was unregistered |
+> | Git | clean, pushed to `github.com/mrvlajnic/veltronlm` |
+> | Tests | 184 passing |
+>
+> The model is a **BASE** model: it continues text, it does not follow instructions and
+> does not chat. SFT and DPO are implemented but have never been run.
+>
+> **Resume:** `powershell -ExecutionPolicy Bypass -File scripts\windows\start_veltron_training.ps1`
+> (verified to resume from step 4,134, not restart)
+> **Status:** `powershell -ExecutionPolicy Bypass -File scripts\windows\status_veltron_training.ps1`
+> **Safe stop:** `powershell -ExecutionPolicy Bypass -File scripts\windows\stop_veltron_training.ps1`
+>
+> ### Do not quote val perplexity 3.0
+>
+> It sits *below* the training loss (1.18 vs 3.42), which is impossible for real
+> generalisation. The validation split is **6 documents** and evaluation samples **8,176**
+> of its 51,287 tokens. The curve is non-monotone and flattened while training loss kept
+> falling. Building a proper validation split is the highest-value next action.
+>
+> ### Everything below the banner is historical session log
+>
+> Sections 1-4 and the dated entries record what was true at the time and have been
+> superseded. Keep them for the reasoning and for the incident record, but do not read
+> "training is running" there as current.
+
+
+---
 
 **Read this first.** Written 2026-10-01 ~00:15, mid-project. This document is the entry
 point for anyone continuing the work, including a future session that has no memory of the
