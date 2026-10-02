@@ -18,15 +18,47 @@ training; figures marked LIVE will move).
 | Layers / d_model / heads | 16 / 1,024 / 16 query, 4 KV |
 | Context | 2,048 (trained at 512) |
 | Corpus | `dataset-v1`, 19,485,297 train tokens |
-| Tokens consumed | 26,624,000 (**1.37 epochs**) |
+| Tokens consumed | **33,865,728 (1.74 epochs)** |
+| Steps | 4,134 of 6,000 (stopped by its wall-clock budget) |
+| Wall clock | **8 h 1 m** |
 | Precision | fp32 |
 | Hardware | 1x AMD RX 6700 XT, DirectML |
+| Stop reason | `wall_clock_budget` -- a clean, self-imposed stop |
 
 The 4B architecture in this repository is **verified but untrained**. See §7.
 
+### 1.1 Failure budget: all zero
+
+| | |
+|---|---|
+| OOM | **0** |
+| NaN loss | **0** |
+| Gradient explosion | **0** |
+| Corrupt checkpoints | **0** |
+| I/O errors | **0** |
+
+This was the first run in the project to finish without a single failure. It required three
+fixes that were each found by measurement, not reasoning: the canary running in-process
+(DirectML never returns its heap), `loss_chunk_tokens` of 4096 needing ~1.5 GiB for one
+`cross_entropy` call at a 32k vocabulary, and the NaN check allocating a boolean copy of
+every gradient.
+
+### 1.2 The measurement that fixed it
+
+The run had died at **step ~550 every time** with:
+
+```
+RuntimeError: Could not allocate tensor with 134217728 bytes.
+```
+
+`134217728` is exactly `2 x 512 x 32768 x 4` -- the vocabulary projection. `micro` at batch 2
+exceeded the largest single allocation DirectML satisfies (3.707 GiB) once persistent
+optimizer state was resident. `micro_batch_size` 2 -> 1, with accumulation doubled to hold
+the same 8,192-token batch, removed it.
+
 ## 2. Pretraining
 
-### 2.1 Validation curve (LIVE)
+### 2.1 Validation curve (complete)
 
 | Step | Tokens | Val loss | Val perplexity |
 |---:|---:|---:|---:|
@@ -42,38 +74,42 @@ The 4B architecture in this repository is **verified but untrained**. See §7.
 | 2500 | 20.5M | 3.3974 | 29.9 |
 | 2750 | 22.5M | 3.7460 | 42.3 |
 | 3000 | 24.6M | 1.6098 | 5.0 |
-| 3250 | 26.6M | **1.1045** | **3.0** |
+| **3250** | 26.6M | **1.1045** | **3.0** |
+| 3500 | 28.7M | 1.1303 | 3.1 |
+| 3750 | 30.7M | 1.1365 | 3.1 |
+| 4000 | 32.8M | 1.1498 | 3.2 |
+| 4134 (final) | 33.9M | 1.1788 | 3.3 |
 
 ### 2.2 Read the training loss, not the validation number
 
 **Train loss is the trustworthy signal:**
 
-| | Step 500 | Step 3,250 |
+| | Step 250 | Final (4,134) |
 |---|---:|---:|
-| Train loss (EMA) | 5.48 | **3.85** |
-| Gradient norm | 0.64 | 0.51 |
+| Train loss | 6.15 | **3.42** |
+| Gradient norm | 2.74 | 0.68 |
 | Steps with grad norm > 5 | 0 | **0** |
 
-Smooth, monotone, and stable. The gradient norm never approached the clip threshold after
-warmup.
+**The validation perplexity of 3.0 is not a quality result.** Three measurable reasons:
 
-**The validation perplexity of 3.0 should not be quoted as a quality result.** Three
-reasons, all measurable:
-
-1. **The validation split is 6 documents** (51,287 tokens) and evaluation samples only
-   **8,176** of them. That is far too small for a stable estimate.
-2. **Validation loss is now *below* training loss** (1.10 vs 3.85). The 6 validation
+1. **The validation split is 6 documents** (51,287 tokens), and evaluation samples only
+   **8,176** of them. Far too small for a stable estimate.
+2. **Validation loss ended *below* training loss** (1.18 vs 3.42). The six validation
    documents are a narrow slice of the same Project Gutenberg pool the model trained on, so
-   they are much easier than the training distribution.
-3. **The curve is not monotone**: 3.11 → 3.40 → 3.75 → 1.61. That is the signature of a
-   small-sample estimate, not of a converging model.
+   they are much easier than the training distribution. A model that genuinely generalised
+   would not beat its own training loss by 2.2 nats.
+3. **The curve is not monotone**: 3.11 -> 3.40 -> 3.75 -> 1.61. That is the signature of a
+   small-sample estimate. It also flattened from step 3250 to 4134 (1.10 -> 1.18) while
+   training loss kept falling, which is what overfitting to a tiny validation set looks like.
 
-An honest summary is: **train loss fell 6.15 → 3.85 over 26.6M tokens with no instability,
-and the model is meaningfully better than its step-500 self. A claim about general
-quality requires a proper held-out set, which is the first thing to fix.**
+An honest summary: **train loss fell 6.15 -> 3.42 over 33.9M tokens with no instability, and
+the model is substantially better than its step-500 self.** Any claim about general quality
+requires a proper held-out set. Building one is the first thing to fix, and it is listed
+first in §9.
 
-This is recorded rather than smoothed over because a reviewer who spots an unexplained
-perplexity of 3.0 on a 6-document validation set will discount everything else.
+This is stated rather than smoothed over because a reviewer who spots an unexplained
+perplexity of 3.0 on a six-document validation set will discount everything else in the
+repository.
 
 ## 3. Retrieval
 

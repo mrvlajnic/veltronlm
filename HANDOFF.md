@@ -883,3 +883,64 @@ to name it first.
 
 184 tests pass; zero broken cross-links; `scripts/facts.py` reproduces every figure quoted
 in `docs/RESULTS.md`.
+
+---
+
+# 2026-10-02 22:35 — mini run COMPLETE, automation retired
+
+## The run finished
+
+```
+stop_reason : wall_clock_budget      (self-imposed, clean)
+steps       : 4,134 of 6,000
+tokens      : 33,865,728  (1.74 epochs of dataset-v1)
+wall clock  : 8 h 1 m 18 s
+train loss  : 6.15 -> 3.42
+best val    : 1.1045 at step 3,250 (see the caveat below)
+```
+
+**Failure budget: all zero.** No OOM, no NaN loss, no gradient explosion, no corrupt
+checkpoint, no I/O error. First completely clean run in the project.
+
+### Checkpoints (all valid, 17.59 GiB, 44 GiB disk free)
+
+| Step | Val loss |
+|---:|---:|
+| 3250 (best) | 1.1045 |
+| 3500 | 1.1303 |
+| 3750 | 1.1365 |
+| 4000 | 1.1498 |
+| 4134 (final) | 1.1788 |
+
+## The validation number still is not a quality claim
+
+Val loss 1.18 is **below** train loss 3.42, on a 6-document split sampling 8,176 tokens, and
+the curve flattened from step 3250 to 4134 (1.10 -> 1.18) while train loss kept falling.
+That is overfitting to a tiny evaluation set. `docs/RESULTS.md` §2.2 says so explicitly.
+
+**Quote: train loss 6.15 -> 3.42, gradient norm never above 2.74.**
+
+## Automation is now retired
+
+* `VeltronLM Keepalive` scheduled task **removed** (`Unregister-ScheduledTask`). It will not
+  restart anything tonight.
+* `STOP_REQUEST`, `AUTORUN_PID`, `AUTORUN_INFO` cleared from `checkpoints/mini-pretrain`.
+* No python training process is running. GPU is free.
+
+To resume later: `scripts\windows\start_veltron_training.ps1` (resumes from step 4,134).
+
+## What happens next, in priority order
+
+1. **Build a real validation split.** Six documents is the single biggest weakness in the
+   results. This is cheap and unblocks every other claim.
+2. **Run SFT.** The model is still a base model; it will not chat. The 604-example dataset
+   already exists at `datasets/sft/sft.jsonl`.
+3. **Run one external baseline.** Converting "we built a system" into "we know where it
+   sits" is the largest remaining gap for external review.
+4. Rebuild the scheduled task only if another unattended run is wanted.
+
+## Documentation state
+
+Clean. `docs/RESULTS.md` holds the final numbers with the caveats attached;
+`scripts/facts.py` re-derives every figure from its artefact; 184 tests pass; no broken
+cross-links.

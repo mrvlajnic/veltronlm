@@ -37,7 +37,7 @@ Full numbers, including what is *not* established, are in
 
 | | |
 |---|---|
-| Trained model | `veltronlm-mini`, **244,354,048** parameters, 26.6M tokens, train loss 6.15 → 3.85 |
+| Trained model | `veltronlm-mini`, **244,354,048** parameters, 33.9M tokens (1.74 epochs), train loss 6.15 → **3.42**, zero failures in 8 h |
 | Verified architecture | `veltronlm-4b-base`, **4,026,765,312** parameters — verified, **not trained** |
 | Hardware | 1x AMD Radeon RX 6700 XT (12 GiB), ~10 GiB usable, measured |
 
@@ -178,14 +178,17 @@ via DirectML.
 | 250 | 2.0M | 6.15 | 7.512 | 1830.2 |
 | 1000 | 8.2M | 5.26 | 5.855 | 349.1 |
 | 2000 | 16.4M | 5.14 | 3.736 | 41.9 |
-| 3250 | 26.6M | **3.85** | 1.104 | 3.0 |
+| 3250 | 26.6M | 3.79 | **1.104** | **3.0** |
+| 4134 (final) | 33.9M | **3.42** | 1.179 | 3.3 |
 
-Throughput ~1,020 tokens/s (8,192 tokens/step, ~11.8 s/step), fp32, one consumer GPU.
+4,134 steps in **8 h 1 m**, fp32, one consumer GPU, ~1,020 tokens/s. Stopped by its own
+wall-clock budget with an **all-zero failure budget**: no OOM, no NaN, no gradient
+explosion, no corrupt checkpoint.
 
-**Treat the validation column with care.** It is computed on 6 documents / 8,176 tokens and
-has fallen *below* the training loss, which means it is measuring an easy slice rather than
-generalisation. The train-loss column is the trustworthy signal. `docs/RESULTS.md` §2.2
-explains this in full.
+**Treat the validation column with care.** It is computed on 6 documents / 8,176 tokens,
+has fallen *below* the training loss, and is non-monotone -- so it is measuring an easy
+slice rather than generalisation. The train-loss column is the trustworthy signal.
+`docs/RESULTS.md` §2.2 explains this in full.
 
 An earlier 55.7M-parameter run (`micro`) is also complete and is kept for comparison:
 train loss 6.15 -> 4.20, val perplexity 66.6 at step 1000.
