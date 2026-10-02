@@ -183,39 +183,51 @@ materialises the 4B configuration, quantizes it and measures real latency on thi
 
 ---
 
-## 4b. Measured allocation ceiling: 3.62 GiB, not 12 GiB
+## 4b. Measured memory behaviour: the ceiling is per-allocation, not total
 
-AMD's NVML is unavailable, and Win32_VideoController.AdapterRAM reports a truncated
-32-bit value (4 GiB for this 12 GiB card). Neither is usable for capacity planning.
-scripts/measure_vram.py therefore measures the ceiling directly, by binary-searching the
-largest allocation DirectML will actually satisfy on this host:
+AMD's NVML is unavailable on this card and `Win32_VideoController.AdapterRAM` reports a
+truncated 32-bit value (4 GiB for this 12 GiB card). Neither is usable for capacity
+planning, so `scripts/measure_vram.py` and `scripts/vram_shape.py` measure the real
+behaviour directly.
 
-| Request | Result |
-|---:|---|
-| 3,584 MiB | OK |
-| **3,712 MiB** | **OK — largest single successful allocation** |
-| 3,744 MiB | FAIL |
-| 8,192 MiB | FAIL: not enough GPU video memory |
+| Measurement | Value |
+|---|---|
+| Largest **single** allocation DirectML satisfies | **3.707 GiB** |
+| Total holdable across **many** allocations | **10.00 GiB** |
+| VRAM Windows reports in use | 1.11 GiB |
+| Physical VRAM | 12 GiB |
 
-**Effective compute budget: ~3.62 GiB**, against 12 GiB of physical VRAM.
+**The ~3.7 GiB figure is a per-allocation cap, not the compute budget.** The distinction
+matters, and getting it wrong understates the card by ~2.7x:
 
-The difference is the display. This GPU drives the desktop, so the compositor holds a
-share of VRAM that compute cannot reclaim, and DirectML will not promise memory the GPU
-cannot back. Every memory figure in this document is measured against the 3.62 GiB
-ceiling, not the 12 GiB nameplate.
+* A transformer's largest single tensor is the vocabulary projection,
+  `batch x seq x vocab x 4` bytes. That one tensor has to fit in a single allocation.
+* Everything else -- parameters, gradients, optimizer moments, activations -- is many
+  smaller allocations that together reach ~10 GiB.
 
-### What that ceiling permits
+Evidence that 10 GiB is real and not an artefact: the live `veltronlm-mini` run holds
+**6.98 GiB** of VRAM for a 244M-parameter model in fp32 with 3.72 GiB of persistent
+optimizer state. A 3.7 GiB total budget could not hold that.
 
-| Tier | Optimizer state | Fits 3.62 GiB? |
+### Which tiers fit
+
+| Tier | Persistent optimizer state (fp32) | Fits ~10 GiB? |
 |---|---:|---|
-| 4b | 60.00 GiB | **no — 16.6x over** |
-| small | 11.26 GiB | **no — 3.1x over** |
-| mini | 3.91 GiB | **no — already over before activations** |
-| **117m** | **1.74 GiB** | **yes**, 1.9 GiB left for activations |
-| micro | 0.89 GiB | yes |
+| `4b` | 60.00 GiB | **no — 6.0x over** |
+| `small` | 11.26 GiB | **no — over before activations** |
+| `mini` (244M) | 3.91 GiB | **yes, verified: 6.98 GiB peak observed** |
+| `117m` | 1.74 GiB | yes |
+| `micro` | 0.89 GiB | yes |
 
-mini at 244M is *just* over the ceiling on optimizer state alone, which is why the
-registry marks it trainable but unverified, and why 117m is the practical ceiling.
+### What actually constrains a training run
+
+1. **The single largest tensor must fit one allocation** (3.707 GiB). For this
+   architecture that is the vocabulary projection. A failure at batch 2, sequence 512 and
+   32768 vocabulary was exactly `2 x 512 x 32768 x 4 = 134,217,728` bytes.
+2. **Total resident memory must fit the ~10 GiB budget.**
+
+Both were measured. `micro_batch_size` 1 instead of 2 removed the failure while keeping
+the same effective batch.
 
 ---
 
@@ -225,7 +237,7 @@ registry marks it trainable but unverified, and why 117m is the practical ceilin
 |---|---|---|
 | 4B architecture implemented | **IMPLEMENTED, TESTED** | `tests/unit/test_model.py`, causality exact to 0.0 |
 | 4B parameter count | **VERIFIED** | `4,026,765,312`, analytic == `meta`-device for all 7 configs |
-| 4B from-scratch pretraining | **BLOCKED** | 60 GiB optimizer state vs 12 GiB VRAM; ~22-year lower bound |
+| 4B from-scratch pretraining | **BLOCKED** | 60 GiB optimizer state vs ~10 GiB usable VRAM; ~22-year lower bound |
 | 4B inference | **IMPLEMENTED** | see `reports/inference_benchmark.json` |
 | `micro` (55.7M) pretraining | **BENCHMARKED** | see `experiments/` and `checkpoints/*/summary.json` |
 | Tokenizer trained from scratch | **TESTED** | 2 vocabularies, 0 round-trip failures |
@@ -245,7 +257,7 @@ Where something is blocked, the blocker is stated numerically rather than as an 
 python -m veltron.train --devices          # backend inventory
 python scripts/bench_compute.py             # synchronised matmul throughput
 python scripts/verify_param_count.py        # parameter accounting + memory math
-python -m pytest tests -q                   # 181 tests
+python -m pytest tests -q                   # 184 tests
 ```
 
 ## 7. Disk usage

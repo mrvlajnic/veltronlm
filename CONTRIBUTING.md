@@ -15,7 +15,7 @@ has no test, it does not have a test. If an experiment is planned, it belongs in
 ## Workflow
 
 ```powershell
-python -m pytest tests -q                    # 181 tests, ~13 s
+python -m pytest tests -q                    # 184 tests, ~13 s
 ruff check veltron tests scripts
 python -m veltron.cli info                   # what exists on this machine
 ```

@@ -15,7 +15,7 @@ Nothing calls an external model API.
 
 **One thing could not be done: train the 4B model from random initialisation.** The
 architecture has exactly **4,026,765,312 verified parameters** and no weights, because
-AdamW with fp32 master weights needs **60.00 GiB** against **12 GiB** of VRAM. That is a
+AdamW with fp32 master weights needs **60.00 GiB** against **~10 GiB** of usable VRAM. That is a
 5.0× shortfall. It is reported with arithmetic rather than as an excuse.
 
 The response was to build everything and train the largest tier that fits:
@@ -99,7 +99,8 @@ stayed bounded; no instability, no NaN.
 | Python source | 4.032 | **0** |
 | JSON / structured | 3.597 | **0** |
 
-The 64k vocabulary saturated at 57,611 and is byte-identical to the 32k one on this corpus.
+The 64k vocabulary saturated at 57,611, and it **is** measurably better than the 32k one
+on every measured slice: +3.9% English, +23.6% Serbian Cyrillic, +3.1% Python.
 
 ### 2.6 Compute
 
@@ -255,7 +256,7 @@ veltron/         55 files  model, tokenizer, data, training, finetuning, alignme
 docs/            17 documents
 experiments/     13 records + template + index
 scripts/         15 reproducible entry points
-tests/           181 tests
+tests/           184 tests
 configs/         8 YAML configs
 ```
 

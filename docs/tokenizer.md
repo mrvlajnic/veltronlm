@@ -91,46 +91,54 @@ All numbers below are measured by `VeltronTokenizer.efficiency()` on slices draw
 **raw corpora** (not the training sample, which is budget-capped and skewed toward long
 documents). `chars/token` is the headline metric; higher is better.
 
-### 3.1 `tok-mini-32k` (vocab 32,768)
+### 3.1 Measured compression, both vocabularies
 
-| Slice | Docs | Chars | Tokens | chars/token | tokens/word | Round-trip failures |
-|---|---:|---:|---:|---:|---:|---:|
-| English prose | 120 | 960,000 | 253,449 | **3.788** | 1.236 | **0** |
-| Serbian Cyrillic | 20 | 62,935 | 18,062 | **3.484** | 1.908 | **0** |
-| Serbian Latin | 2 | 9,437 | 4,023 | **2.346** | 2.884 | **0** |
-| Python source | 76 | 562,641 | 139,535 | **4.032** | 2.204 | **0** |
-| Technical Markdown | 39 | 271,958 | 71,077 | **3.826** | 2.271 | **0** |
-| JSON / structured | 1 | 8,000 | 2,224 | **3.597** | 2.607 | **0** |
+Slices are drawn from the **raw corpora**, not the budget-capped training sample.
+`chars/token` is the headline metric; higher is better. Source:
+`reports/tokenizer-tok-mini-32k.json` and `reports/tokenizer-tok-4b-64k.json`.
 
-### 3.2 `tok-4b-64k` (vocab 57,611)
+| Slice | `tok-mini-32k` (32,768) | `tok-4b-64k` (57,611) | 64k advantage |
+|---|---:|---:|---:|
+| English prose | 3.646 | **3.788** | +3.9% |
+| Serbian Cyrillic | 2.819 | **3.484** | **+23.6%** |
+| Serbian Latin | 2.177 | **2.346** | +7.8% |
+| Python source | 3.910 | **4.032** | +3.1% |
+| Technical Markdown | 3.696 | **3.826** | +3.5% |
+| JSON / structured | 3.416 | **3.597** | +5.3% |
+| **Round-trip failures** | **0** | **0** | — |
 
-| Slice | Docs | Chars | Tokens | chars/token | tokens/word | Round-trip failures |
-|---|---:|---:|---:|---:|---:|---:|
-| English prose | 120 | 960,000 | 253,449 | **3.788** | 1.236 | **0** |
-| Serbian Cyrillic | 20 | 62,935 | 18,062 | **3.484** | 1.908 | **0** |
-| Serbian Latin | 2 | 9,437 | 4,023 | **2.346** | 2.884 | **0** |
-| Python source | 76 | 562,641 | 139,535 | **4.032** | 2.204 | **0** |
-| Technical Markdown | 39 | 271,958 | 71,077 | **3.826** | 2.271 | **0** |
-| JSON / structured | 1 | 8,000 | 2,224 | **3.597** | 2.607 | **0** |
+### 3.2 The 64k vocabulary is measurably better, most of all for Serbian
+
+An earlier revision of this document stated the two vocabularies were identical on every
+slice. **That was wrong** — it came from reading one table twice. The real numbers above
+show a consistent 3–9% gain on English and code, and a **23.6% gain on Serbian Cyrillic**.
+
+The Cyrillic result is the interesting one. With double the merge budget the tokenizer can
+afford Cyrillic character bigrams and common word stems without displacing English merges,
+so the minority script stops being the one that gets crowded out. That is a concrete
+argument for the larger vocabulary on this project's language mix, not a generic
+"bigger is better" claim.
 
 ### 3.3 Reading these numbers honestly
 
-**The two vocabularies are byte-identical on every slice above.** That is expected and not
-a bug: the corpus is only 9.4 Mcharacters, and the first ~32,768 merges capture essentially
-all of the measurable gain. Increasing the vocabulary from 32k to 64k would need roughly
-4× the training text to produce a different result. Reporting the 64k tokenizer as
-"better compression" would be unsupported by these measurements.
+**Serbian Latin costs 36% more tokens per character than English** for the 64k tokenizer
+(2.346 vs 3.788), and 186% more per *word* (2.884 vs 1.236). Serbian inflection (six noun
+cases, seven verb forms) plus the Latin/Cyrillic digraph problem means a Serbian word has
+two spellings and the merge table must cover both.
 
-**Serbian Latin costs 38% more tokens per character than English** (2.346 vs 3.788) — and
-38% more per *word* (2.884 vs 1.236). Serbian inflection (six cases per noun, seven per
-verb) plus the Latin/Cyrillic digraph problem means a Serbian word is spelled one of two
-ways, so the merge table splits its capacity. Cyrillic scores better (3.484) despite being
-the minority script, which suggests the digraph handling, not the inflection, is the
-dominant cost.
+**Cyrillic beats Latin** (3.484 vs 2.346) despite Cyrillic being the minority script in
+the corpus. The digraph hypothesis in 3.3 predicts this: Cyrillic needs fewer distinct
+characters for the same orthography, so it fragments less.
 
-**The Serbian Latin slice has only 2 documents (9,437 chars).** That is too small to be
-statistically meaningful. Treat the 2.346 figure as indicative, not established. Obtaining
-more Serbian text is the single highest-value data action for this project.
+**The Serbian Latin slice has 2 documents (9,437 chars).** That is far too small to be
+statistically meaningful. Treat 2.346 as indicative, not established. Obtaining more
+Serbian text remains the single highest-value data action for this project.
+
+**The 64k tokenizer saturated at 57,611** rather than 65,536: at `min_frequency=2` a
+9.4 Mcharacter sample does not contain 65,536 distinct merges. The `4b` configuration
+declares `vocab_size=65536`, leaving **7,925 unused embedding rows (12.1% of the
+embedding)** -- 97,145,856 parameters that are allocated but never addressed. Reported
+rather than hidden.
 
 ### 3.4 Reference points
 

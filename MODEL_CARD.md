@@ -12,7 +12,7 @@
 > `veltronlm-4b-base` is a **verified architecture with no weights**. Its parameter count,
 > tensor shapes, memory footprint and causality are verified and unit-tested. Training it from
 > random initialisation requires **60.00 GiB** of AdamW optimizer state against the
-> **12 GiB** of VRAM available on the build host — a 5.0x shortfall — and a ~22-year
+> **~10 GiB** of usable VRAM (measured) on the build host — a **6.0x** shortfall — and a ~22-year
 > single-GPU runtime at the measured matmul peak.
 >
 > The only trained weights in this repository are `veltronlm-micro` (55.7M parameters,

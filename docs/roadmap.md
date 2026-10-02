@@ -14,12 +14,12 @@ fully measured) · **IN PROGRESS** · **BLOCKED** (external resource required) �
 | Phase | Status | Notes |
 |---|---|---|
 | 0 Environment | **VERIFIED** | Audit and feasibility math published |
-| 1 Repository | **VERIFIED** | Structure, CLI, configs, CI, 181 tests |
+| 1 Repository | **VERIFIED** | Structure, CLI, configs, CI, 184 tests |
 | 2 Tokenizer | **VERIFIED** | Two vocabularies trained, 0 round-trip failures |
 | 3 Data | **VERIFIED** | 19,485,297 train tokens, full provenance |
 | 4 Architecture | **VERIFIED** | Causality exact; 4B params verified two ways |
 | 5 Tiny pretraining | **VERIFIED** | `micro` run, val loss 5.76 → 4.56 |
-| 6 Scaling | **BLOCKED** | 60 GiB optimizer state vs 12 GiB VRAM |
+| 6 Scaling | **BLOCKED** | 60 GiB optimizer state vs ~10 GiB usable VRAM |
 | 7 Base model | **BLOCKED** | Depends on phase 6 |
 | 8 Instruction tuning | **IMPLEMENTED** | Pipeline tested; run pending base model |
 | 9 Customer support | **VERIFIED** | 14/14 hit@1 retrieval; triage tested |
@@ -38,7 +38,7 @@ feasibility arithmetic.
 
 ## 1. Repository — VERIFIED
 
-Structure, unified CLI, `pyproject.toml`, configs, CI with six jobs, 181 tests.
+Structure, unified CLI, `pyproject.toml`, configs, CI with six jobs, 184 tests.
 
 ## 2. Tokenizer — VERIFIED
 
@@ -47,7 +47,7 @@ round-trip failures. Three real bugs found and fixed
 ([EXP-0006](../experiments/EXP-0006.md)).
 
 **Open:** retrain on a 40 Mcharacter sample to test whether 32k vs 64k diverges. Currently
-byte-identical.
+measurably better on every slice (+23.6% on Serbian Cyrillic).
 
 ## 3. Data — VERIFIED
 
@@ -73,7 +73,7 @@ KV cache within 9.2e-07. Batched generation token-identical to single-prompt.
 ## 6. Scaling — **BLOCKED**
 
 **Blocker:** AdamW with fp32 master weights requires **60.00 GiB** (params + grads + m + v)
-against **12 GiB** of VRAM. A 5.0x shortfall before activations or fragmentation.
+against **~10 GiB** usable VRAM. A 6.0x shortfall before activations or fragmentation.
 
 Secondary: at the measured 2.80 TFLOP/s matmul peak, Chinchilla-optimal 4B training is a
 **~22-year** single-GPU run; at the measured end-to-end efficiency, ~710 years.

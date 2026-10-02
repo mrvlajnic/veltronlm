@@ -77,7 +77,7 @@ is blocked by hardware and is reported as blocked.
 - Canary, checkpoint, tokenizer and retrieval regression tests
 
 **Engineering**
-- 181 tests: 151 unit, 30 integration
+- 184 tests: 154 unit, 30 integration
 - 13 experiment records, including two documenting failed designs
 - 19 documents, one model card, one final report
 - CI: lint, tests, parameter cross-check, API smoke, retrieval regression, secret scan
@@ -85,7 +85,7 @@ is blocked by hardware and is reported as blocked.
 ### Blocked
 
 - **4B pretraining from random initialisation.** 60.00 GiB of AdamW optimizer state
-  against 12 GiB of VRAM (5.0x shortfall), and a ~22-year lower bound at the measured
+  against ~10 GiB of usable VRAM (6.0x shortfall), and a ~22-year lower bound at the measured
   matmul peak. Reported with arithmetic in `experiments/EXP-0004.md`.
 - **Benchmark comparison against Qwen or any other model.** No baseline was run on this
   host, so no competitive claim is made anywhere in this repository.

@@ -37,7 +37,7 @@ except the single thing the hardware cannot do: **train the 4B model from scratc
 
 `veltronlm-4b-base` has **4,026,765,312 verified parameters and no weights.** AdamW with
 fp32 master weights needs **60.00 GiB** of optimizer state against **12 GiB** of VRAM — a
-5.0x shortfall. Chinchilla-optimal 4B training is a ~22-year single-GPU run at the measured
+6.0x shortfall. Chinchilla-optimal 4B training is a ~22-year single-GPU run at the measured
 2.80 TFLOP/s matmul peak.
 
 This is reported as a blocker **with arithmetic** in `experiments/EXP-0004.md`, not as an
@@ -706,7 +706,7 @@ Full detail in `docs/roadmap.md`.
 1. `python -m veltron.cli info` — what exists on this machine
 2. `python scripts/verify_checkpoints.py checkpoints/micro-pretrain` — checkpoint integrity
 3. `python scripts/verify_rag.py` — retrieval regression
-4. `python -m pytest tests -q` — 181 tests
+4. `python -m pytest tests -q` — 184 tests
 5. `docs/troubleshooting.md` — symptom-indexed fixes
 6. `reports/*.json` — every benchmark wrote a machine-readable result
 7. **`git log`** — the repo is **not** a git repository yet. See §13.
@@ -794,7 +794,7 @@ python -m veltron.cli info
 
 Written 2026-10-01. State at that moment:
 
-* **181 tests passing**
+* **184 tests passing**
 * **4B architecture verified, 4,026,765,312 parameters, weights blocked** (60 GiB vs 12 GiB)
 * **`micro` pretraining at step 825/4000**, val loss 4.564, perplexity 96.0, ~3,600 tok/s
 * **Retrieval at 100% hit@1 and 100% recall@3** on the 14-query support suite
@@ -803,3 +803,83 @@ Written 2026-10-01. State at that moment:
 * **13 experiment records**, including 2 documenting failed designs
 * **~24 documents**, one model card, one final report
 * **Not a git repository** — fix this first
+---
+
+# 2026-10-02 19:40 — documentation audit (done while mini trains)
+
+No configuration was changed. Training PID 6084 continued throughout.
+
+## Documentation errors found and corrected
+
+**1. The VRAM budget was wrong by 2.7x, in a way that understated the machine.**
+
+The docs claimed an "effective compute budget of ~3.62 GiB". That figure is the
+**single-allocation ceiling**, not the total. Measured by `scripts/vram_shape.py`:
+
+| | |
+|---|---|
+| Largest single allocation | 3.707 GiB |
+| Total holdable across many allocations | **10.00 GiB** |
+| What Windows reports in use | 1.11 GiB |
+
+Proof it was wrong: the live `mini` run holds **6.98 GiB** of VRAM. A 3.62 GiB budget
+cannot hold that. The 4B blocker arithmetic is corrected from "60 GiB vs 12 GiB, 5.0x
+short" to **"60 GiB vs ~10 GiB usable, 6.0x short"**, which is a *worse* number for the
+project and therefore the honest one.
+
+**2. The tokenizers were described as byte-identical. They are not.**
+
+`docs/tokenizer.md` and `FINAL_REPORT.md` both claimed the 32k and 64k vocabularies
+produced identical compression. That came from reading one table twice. The authoritative
+per-tokenizer reports show the 64k tokenizer is better on **every** slice:
+
+| Slice | 32k | 64k | Gain |
+|---|---:|---:|---:|
+| English prose | 3.646 | 3.788 | +3.9% |
+| **Serbian Cyrillic** | 2.819 | **3.484** | **+23.6%** |
+| Serbian Latin | 2.177 | 2.346 | +7.8% |
+| Python | 3.910 | 4.032 | +3.1% |
+| Markdown | 3.696 | 3.826 | +3.5% |
+| JSON | 3.416 | 3.597 | +5.3% |
+
+This is now presented as a finding rather than a non-result: doubling the merge budget stops
+the minority script being crowded out of the table. `experiments/EXP-0006.md` keeps the
+original wrong conclusion visible with a correction above it, because deleting it would
+hide the mistake.
+
+**3. Test count** was 181 everywhere; the real number is **184**.
+
+## Added
+
+* `scripts/facts.py` — reads every documented figure from the artefact it came from, so
+  prose cannot drift from reality. `--check` compares claims.
+* `docs/RESULTS.md` — all measured numbers in one place, each with what it does *not*
+  establish.
+* `README.md` — restructured around the research problem rather than the component list.
+
+## The most important correction for any reviewer
+
+The live run reports **validation perplexity 3.0**, which looks excellent and is *not* a
+quality claim. The validation split is **6 documents**; evaluation samples 8,176 of its
+51,287 tokens; and validation loss has fallen *below* training loss (1.10 vs 3.85), which
+means it is measuring an easy slice of the same Gutenberg pool rather than generalisation.
+The validation curve is also non-monotone (3.11 → 3.40 → 3.75 → 1.61), the signature of a
+small-sample estimate.
+
+The trustworthy number is **train loss 6.15 → 3.85 with gradient norm never exceeding 2.74**.
+
+`docs/RESULTS.md` §2.2 states this plainly instead of quoting 3.0. A reviewer who catches
+an unexplained perplexity of 3.0 on 6 documents would discount the whole repository; better
+to name it first.
+
+## Still not done, and named as such
+
+* No external baseline has ever been run.
+* SFT and DPO have never been executed.
+* Human evaluation has not been done.
+* The validation set needs to be larger than 6 documents before any quality claim.
+
+## Verification
+
+184 tests pass; zero broken cross-links; `scripts/facts.py` reproduces every figure quoted
+in `docs/RESULTS.md`.

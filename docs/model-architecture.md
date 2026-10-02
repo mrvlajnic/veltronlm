@@ -86,7 +86,7 @@ total     = V·D                 embedding
 | KV cache, batch 8, 8192 ctx, bf16 | 9.00 GiB |
 | AdamW optimizer state (fp32 m, v, grads, params) | **60.00 GiB** |
 
-The 60 GiB optimizer requirement against 12 GiB of VRAM is the hard blocker on
+The 60 GiB optimizer requirement against ~10 GiB of usable VRAM is the hard blocker on
 from-scratch training here. See `docs/environment.md` §4.
 
 GQA divides the KV cache by `H/Hkv = 3` relative to full multi-head attention, which is
